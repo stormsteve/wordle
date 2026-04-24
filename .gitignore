@@ -1,0 +1,25 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+
+# --- Backup / temp files ---
+*~
+*.bak
+*.swp
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- Project-specific junk ---
+wordle_cache_old.json
+american-english  # get from spelling checker package
+
+# --- Ignore old experiments ---
+old/
+old2/
+old3/
+
+# --- Optional: logs ---
+*.log
