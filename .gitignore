@@ -14,7 +14,9 @@ Thumbs.db
 
 # --- Project-specific junk ---
 wordle_cache_old.json
-american-english  # get from spelling checker package
+
+# get from spelling checker package
+american-english
 
 # --- Ignore old experiments ---
 old/
