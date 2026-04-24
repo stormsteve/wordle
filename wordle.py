@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+"""
+Wordle Solver
+
+A Python program to solve NYT Wordle puzzles using optimal guessing strategies.
+Supports multiple modes including automatic solving, clue-based solving, advice mode, and interactive play.
+"""
+
+import logging
+
+from argument_parser import parse_command_line
+from game_logic import game_loop
+
+
+def main() -> None:
+    """
+    Main entry point: set up logging, parse args, and start the game.
+    """
+
+    logging.basicConfig(level = logging.ERROR, format = '[%(levelname)s] %(asctime)s - %(message)s')
+
+    parse_command_line()
+
+    # Play the game!
+    game_loop()
+
+if __name__ == '__main__':
+    main()
