@@ -14,8 +14,6 @@ from mytypes import WordSet       # My type hints
 from config  import Config        # Wordle Solver Configuration
 from clues   import Clues         # Clues gathered so far
 
-config = Config() # Load the configuration into a singleton
-
 
 class SecondGuess ():
     """
@@ -57,7 +55,7 @@ class SecondGuessCache ():
 
     def load(self, dont_load:Optional[WordSet] = None) -> None:
         """Load the cache from a file if it is stale."""
-
+        config = Config()
         cache_file_name = config.get_cache_file_name()
 
         # check if cache is stale
@@ -108,7 +106,7 @@ class SecondGuessCache ():
         """Serialize the cache and write it to a file."""
         if self._dirty:
             self._dirty = False
-            with open(config.get_cache_file_name(),'w',encoding='UTF-8') as f:
+            with open(Config().get_cache_file_name(),'w',encoding='UTF-8') as f:
                 f.write(self.to_json())
                 f.write('\n')
 

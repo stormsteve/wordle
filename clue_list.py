@@ -4,10 +4,8 @@ Generate the clue list from a guess and answer.
 """
 
 from __future__ import annotations
-from mytypes import WordSet, LetterSet, LetterList # My type hints
+from mytypes import LetterList # My type hints
 from config  import Config             # We need this for a configurable constant
-
-config = Config()
 
 def replace_first(letters: LetterList, letter: str, substitute: str) -> LetterList:
     """
@@ -40,8 +38,9 @@ def get_clue_list(guess: str, ans: str) -> LetterList:
     Returns:
         LetterList: List of 'g', 'y', 'b' for each position.
     """
+    word_length = Config().get_word_length()
     answer_list = list(ans)
-    color_list = [''] * config.get_word_length()
+    color_list = [''] * word_length
     for i, letter in enumerate(guess):
         if letter == answer_list[i]:
             color_list[i] = 'g'

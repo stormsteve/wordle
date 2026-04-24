@@ -10,8 +10,6 @@ import sys                        # exit
 from mytypes import WordSet       # My type hints
 from config  import Config        # Wordle Solver Configuration
 
-config = Config() # Load the configuration into a singleton
-
 def load_word_set_from_file(filename: str) -> WordSet:
     """
     Load a set of words from a file, one word per line.
@@ -139,6 +137,7 @@ def build_dictionaries() -> tuple[WordSet, WordSet]:
     Returns:
         tuple[WordSet, WordSet]: The sets of legal guesses and answers.
     """
+    config = Config()
     word_length = config.get_word_length()
     filename = config.get_word_list_dictionary()
 

@@ -4,7 +4,6 @@ Implements the optimization logic for finding the best guess
 """
 
 from __future__ import annotations
-from typing import Type
 import logging              # logging
 
 from mytypes import WordSet            # My type hints
@@ -12,10 +11,13 @@ from config  import Config             # We need this for a configurable constan
 from clues   import Clues              # Clues gathered so far
 from clue_list import get_clue_list    # To generate a clue list
 
-config = Config()
-MAX_WORD_SCORE = config.get_max_word_score()
 
-def accurate(words: WordSet, guess: str, limit:float = MAX_WORD_SCORE) -> float:
+def _max_word_score() -> int:
+    """Return the current configured max word score."""
+    return Config().get_max_word_score()
+
+
+def accurate(words: WordSet, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
 
@@ -30,9 +32,11 @@ def accurate(words: WordSet, guess: str, limit:float = MAX_WORD_SCORE) -> float:
     Returns:
         float: The score for the guess. Smaller is better.
     """
-    return config.get_algorithm()(words, guess, limit)
+    actual_limit = _max_word_score() if limit is None else limit
+    return Config().get_algorithm()(words, guess, actual_limit)
 
-def accurate_avg(words: WordSet, guess: str, limit:float = MAX_WORD_SCORE) -> float:
+
+def accurate_avg(words: WordSet, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
 
@@ -48,10 +52,11 @@ def accurate_avg(words: WordSet, guess: str, limit:float = MAX_WORD_SCORE) -> fl
     Returns:
         float: The average number of remaining words after the guess.
     """
+    actual_limit = _max_word_score() if limit is None else limit
     if len(words) == 0:
-        return limit
+        return actual_limit
     accum_score = 0
-    accum_limit = limit * len(words)
+    accum_limit = actual_limit * len(words)
     for w in words:
         if w != guess: # Don't take into account the 1 that will exactly match
             temp_clue = Clues()
@@ -59,14 +64,14 @@ def accurate_avg(words: WordSet, guess: str, limit:float = MAX_WORD_SCORE) -> fl
             accum_score += temp_clue.filter_words_len(words)
             # Short ciruit if the score is too high already
             if accum_score > accum_limit:
-                return MAX_WORD_SCORE
+                return _max_word_score()
     # Return the average number of resulting words, with a bias against words
     # that cannot be the correct answer
     return accum_score / len(words)  + (0 if guess in words else 0.1)
 
 from typing import List
 
-def accurate_median(words: WordSet, guess: str, limit: float = MAX_WORD_SCORE) -> float:
+def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
     For each word in the set (except the guess itself), treat it as the answer and see how many
@@ -79,11 +84,12 @@ def accurate_median(words: WordSet, guess: str, limit: float = MAX_WORD_SCORE) -
     Returns:
         float: The median number of remaining words after the guess.
     """
+    actual_limit = _max_word_score() if limit is None else limit
     if len(words) == 0:
-        return limit
+        return actual_limit
     remaining_counts: List[int] = []
     accum_score = 0
-    accum_limit = limit * len(words)
+    accum_limit = actual_limit * len(words)
     for w in words:
         if w != guess:  # Don't take into account the one that will exactly match
             temp_clue = Clues()
@@ -93,7 +99,7 @@ def accurate_median(words: WordSet, guess: str, limit: float = MAX_WORD_SCORE) -
             accum_score += count
             # Short circuit if the score is too high already
             if accum_score > accum_limit:
-                return MAX_WORD_SCORE
+                return _max_word_score()
     
     # Calculate the median of remaining counts
     if not remaining_counts:
@@ -109,7 +115,7 @@ def accurate_median(words: WordSet, guess: str, limit: float = MAX_WORD_SCORE) -
     # that cannot be the correct answer
     return median + (0 if guess in words else 0.1)
 
-def accurate_max(words: WordSet, guess: str, limit:float = MAX_WORD_SCORE) -> float:
+def accurate_max(words: WordSet, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
     For each word in the set (except the guess itself), treat it as the answer and see how many
@@ -124,16 +130,17 @@ def accurate_max(words: WordSet, guess: str, limit:float = MAX_WORD_SCORE) -> fl
     Returns:
         float: The maximum number of remaining words after the guess.
     """
+    actual_limit = _max_word_score() if limit is None else limit
     if len(words) == 0:
-        return limit
+        return actual_limit
     max_score = -1
     for w in words:
         temp_clue = Clues()
         temp_clue.add_clue(guess, get_clue_list(guess, w))
         this_score = temp_clue.filter_words_len(words)
         # Short ciruit if the score is too high already
-        if this_score > limit:
-            return MAX_WORD_SCORE
+        if this_score > actual_limit:
+            return _max_word_score()
         # Find the maximum
         if this_score > max_score:
             max_score = this_score
