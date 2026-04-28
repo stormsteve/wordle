@@ -83,9 +83,15 @@ class WordleGUI:
         self.solve_cells: list[list[tk.Label]] = []
         self.play_recommend_token = 0
         self.solve_recommend_token = 0
+        self.play_recommend_running = False
+        self.solve_recommend_running = False
+        self.play_recommend_pending = False
+        self.solve_recommend_pending = False
+        self.play_ready = False
+        self.solve_ready = False
         self.is_closing = False
         self.shutdown_dialog: tk.Toplevel | None = None
-        self.recommendation_queue: queue.SimpleQueue[tuple[str, int, str, str]] = queue.SimpleQueue()
+        self.recommendation_queue: queue.SimpleQueue[tuple[str, int, str, str] | tuple[str]] = queue.SimpleQueue()
         self.active_recommendation_threads: set[threading.Thread] = set()
         self.recommendation_thread_lock = threading.Lock()
 
@@ -98,8 +104,12 @@ class WordleGUI:
         self.solve_remaining = self.legal_answers.copy()
 
         self._build_layout()
-        self._new_play_game()
-        self._reset_solver()
+        if self._initial_mode_uses_solver():
+            self._new_play_game(recommend=False)
+            self._reset_solver(recommend=True)
+        else:
+            self._new_play_game(recommend=True)
+            self._reset_solver(recommend=False)
         self.root.after(50, self._poll_recommendation_queue)
         self.root.after_idle(self._select_initial_tab)
 
@@ -187,9 +197,16 @@ class WordleGUI:
             return
         while True:
             try:
-                kind, token, guess, logic_text = self.recommendation_queue.get_nowait()
+                item = self.recommendation_queue.get_nowait()
             except queue.Empty:
                 break
+            if len(item) == 1:
+                if item[0] == 'play_refresh':
+                    self._recommend_play_guess()
+                elif item[0] == 'solve_refresh':
+                    self._recommend_solver_guess()
+                continue
+            kind, token, guess, logic_text = item
             if kind == 'play':
                 self._apply_play_recommendation(token, guess, logic_text)
             else:
@@ -281,6 +298,7 @@ class WordleGUI:
         self.solve_tab = tk.Frame(self.notebook, bg=COLOR_MAP['paper'])
         self.notebook.add(self.play_tab, text='Play')
         self.notebook.add(self.solve_tab, text='Solve')
+        self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
 
         self._build_play_tab()
         self._build_solve_tab()
@@ -572,7 +590,7 @@ class WordleGUI:
                 fg=COLOR_MAP['text'],
             )
 
-    def _new_play_game(self) -> None:
+    def _new_play_game(self, recommend: bool = True) -> None:
         self.play_answer = self.configured_answer if self._has_known_answer() else random_word(self.legal_answers)
         self.play_clues = Clues()
         self.play_remaining = self.legal_answers.copy()
@@ -588,7 +606,11 @@ class WordleGUI:
             )
         self.play_remaining_var.set(f'{len(self.play_remaining)} possible answers at the start.')
         self._reset_board(self.play_cells)
-        self._recommend_play_guess()
+        self.play_ready = recommend
+        if recommend:
+            self._recommend_play_guess()
+        else:
+            self.play_recommendation_var.set('Open the Play tab to compute a recommendation.')
         self.play_guess_entry.focus_set()
 
     def _submit_play_guess(self) -> None:
@@ -631,7 +653,7 @@ class WordleGUI:
         )
         self._recommend_play_guess()
 
-    def _reset_solver(self) -> None:
+    def _reset_solver(self, recommend: bool = True) -> None:
         self.solve_clues = Clues()
         self.solve_remaining = self.legal_answers.copy()
         self.solve_guess_var.set('')
@@ -650,7 +672,11 @@ class WordleGUI:
             )
         self.solve_remaining_var.set(f'{len(self.solve_remaining)} possible answers at the start.')
         self._reset_board(self.solve_cells)
-        self._recommend_solver_guess()
+        self.solve_ready = recommend
+        if recommend:
+            self._recommend_solver_guess()
+        else:
+            self.solve_recommendation_var.set('Open the Solve tab to compute a recommendation.')
 
     def _submit_solver_round(self) -> None:
         guess = self.solve_guess_var.get().strip().lower()
@@ -716,12 +742,19 @@ class WordleGUI:
         return ''
 
     def _recommend_play_guess(self) -> None:
+        if self.play_recommend_running:
+            self.play_recommend_pending = True
+            self.play_recommend_token += 1
+            return
         token = self.play_recommend_token + 1
         self.play_recommend_token = token
-        initial_guess = self._get_configured_start_guess()
+        self.play_recommend_running = True
+        self.play_recommend_pending = False
+        initial_guess = self._get_initial_guess(self.play_clues.get_num_guesses())
         if self.play_clues.get_num_guesses() == 0 and initial_guess:
             logic = Logic()
-            logic.update('starting word provided', 0, {initial_guess})
+            logic.update(self._get_initial_guess_reason(), 0, {initial_guess})
+            self.play_recommend_running = False
             self._apply_play_recommendation(token, initial_guess, str(logic))
             return
         self.play_recommendation_var.set('Computing recommendation...')
@@ -734,6 +767,9 @@ class WordleGUI:
                 if not self.is_closing:
                     self.recommendation_queue.put(('play', token, guess, str(logic)))
             finally:
+                self.play_recommend_running = False
+                if self.play_recommend_pending and not self.is_closing:
+                    self.recommendation_queue.put(('play_refresh',))
                 self._unregister_recommendation_thread(thread)
 
         thread = threading.Thread(target=worker, name=f'play-recommend-{token}')
@@ -746,12 +782,19 @@ class WordleGUI:
         self.play_recommendation_var.set(f'{guess.upper()}\n{logic_text}')
 
     def _recommend_solver_guess(self) -> None:
+        if self.solve_recommend_running:
+            self.solve_recommend_pending = True
+            self.solve_recommend_token += 1
+            return
         token = self.solve_recommend_token + 1
         self.solve_recommend_token = token
-        initial_guess = self._get_configured_start_guess()
+        self.solve_recommend_running = True
+        self.solve_recommend_pending = False
+        initial_guess = self._get_initial_guess(self.solve_clues.get_num_guesses())
         if self.solve_clues.get_num_guesses() == 0 and initial_guess:
             logic = Logic()
-            logic.update('starting word provided', 0, {initial_guess})
+            logic.update(self._get_initial_guess_reason(), 0, {initial_guess})
+            self.solve_recommend_running = False
             self._apply_solver_recommendation(token, initial_guess, str(logic))
             return
         self.solve_recommendation_var.set('Computing recommendation...')
@@ -764,6 +807,9 @@ class WordleGUI:
                 if not self.is_closing:
                     self.recommendation_queue.put(('solve', token, guess, str(logic)))
             finally:
+                self.solve_recommend_running = False
+                if self.solve_recommend_pending and not self.is_closing:
+                    self.recommendation_queue.put(('solve_refresh',))
                 self._unregister_recommendation_thread(thread)
 
         thread = threading.Thread(target=worker, name=f'solve-recommend-{token}')
@@ -785,17 +831,51 @@ class WordleGUI:
             return start
         return ''
 
+    def _get_initial_guess(self, num_guesses: int) -> str:
+        """Return the cheap startup guess the CLI would use before any clues exist."""
+        if num_guesses != 0:
+            return ''
+        configured = self._get_configured_start_guess()
+        if configured:
+            return configured
+        if (self.config.get_start() or '').strip().lower() == 'list':
+            if self.word_length == 5:
+                return random_word(self.config.get_first_guess_words())
+            return random_word(self.legal_answers)
+        return ''
+
+    def _get_initial_guess_reason(self) -> str:
+        """Describe the source of the initial startup guess."""
+        return (
+            'starting word provided'
+            if self._get_configured_start_guess()
+            else 'predefined list'
+        )
+
+    def _on_tab_changed(self, _event=None) -> None:
+        """Lazy-start recommendations for tabs that have not been activated yet."""
+        current_tab = self.notebook.select()
+        if current_tab == str(self.play_tab) and not self.play_ready:
+            self.play_ready = True
+            self._recommend_play_guess()
+        elif current_tab == str(self.solve_tab) and not self.solve_ready:
+            self.solve_ready = True
+            self._recommend_solver_guess()
+
     def _has_known_answer(self) -> bool:
         return bool(self.configured_answer and len(self.configured_answer) == self.word_length)
 
     def _solver_can_compute_clue(self) -> bool:
         return self._has_known_answer() and self.config.get_mode() == 'advise'
 
+    def _initial_mode_uses_solver(self) -> bool:
+        return self.config.get_mode() in {'clues', 'advise'}
+
     def _select_initial_tab(self) -> None:
         tabs = self.notebook.tabs()
         if not tabs:
             return
-        tab_id = tabs[1] if self.config.get_mode() in {'clues', 'advise'} else tabs[0]
+        tab_id = tabs[1] if self._initial_mode_uses_solver() else tabs[0]
         self.notebook.select(tab_id)
 
 
