@@ -595,7 +595,7 @@ class WordleGUI:
         self.play_clues = Clues()
         self.play_remaining = self.legal_answers.copy()
         self.play_game_over = False
-        self.play_guess_var.set('')
+        self.play_guess_var.set(self._get_configured_start_guess())
         if self._has_known_answer():
             self.play_status_var.set(
                 f'Loaded fixed answer {self.configured_answer.upper()}. Start with any legal {self.word_length}-letter guess.'
@@ -656,7 +656,7 @@ class WordleGUI:
     def _reset_solver(self, recommend: bool = True) -> None:
         self.solve_clues = Clues()
         self.solve_remaining = self.legal_answers.copy()
-        self.solve_guess_var.set('')
+        self.solve_guess_var.set(self._get_configured_start_guess())
         self.solve_clue_var.set('')
         if self._solver_can_compute_clue():
             self.solve_clue_label.config(text='Computed clue')
@@ -866,7 +866,7 @@ class WordleGUI:
         return bool(self.configured_answer and len(self.configured_answer) == self.word_length)
 
     def _solver_can_compute_clue(self) -> bool:
-        return self._has_known_answer() and self.config.get_mode() == 'advise'
+        return self._has_known_answer()
 
     def _initial_mode_uses_solver(self) -> bool:
         return self.config.get_mode() in {'clues', 'advise'}
