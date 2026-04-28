@@ -8,6 +8,12 @@ from __future__ import annotations
 from multiprocessing import Process, Queue
 from queue import Empty
 from sys import exit # pylint: disable=redefined-builtin
+from threading import Lock
+
+
+_active_concurrent_lock = Lock()
+_active_concurrent: set["Concurrent"] = set()
+_shutdown_requested = False
 
 
 class Concurrent:
@@ -16,6 +22,8 @@ class Concurrent:
         self._processes:list[Process] = []
         self._inqueue: Queue[str] = Queue() # pylint: disable=unsubscriptable-object
         self._outqueue: Queue[str] = Queue() # pylint: disable=unsubscriptable-object
+        with _active_concurrent_lock:
+            _active_concurrent.add(self)
 
     def add_process(self, p:Process) -> None:
         """Register a newly created process"""
@@ -25,6 +33,7 @@ class Concurrent:
         """Join all of the child processes"""
         for p in self._processes:
             p.join()
+        self.close()
 
     def get_inqueue(self) -> Queue[str]: # pylint: disable=unsubscriptable-object
         """Get the inqueue"""
@@ -40,6 +49,8 @@ class Concurrent:
 
     def is_child_abnormal_exit(self) -> bool:
         """Look for abnormally terminated child processes"""
+        if _shutdown_requested:
+            return False
         for p in self._processes:
             if p.exitcode is not None and p.exitcode != 0:
                 print(f'Process {p} abnormal exit code.')
@@ -56,7 +67,31 @@ class Concurrent:
         self._inqueue.cancel_join_thread()
         self._outqueue.cancel_join_thread()
         self.kill_children()
+        self.close()
         exit(exit_code)
+
+    def close(self) -> None:
+        """Unregister this instance from the active concurrent registry."""
+        with _active_concurrent_lock:
+            _active_concurrent.discard(self)
+
+
+def shutdown_active_children() -> None:
+    """Kill any active child scorer processes."""
+    global _shutdown_requested
+    _shutdown_requested = True
+    with _active_concurrent_lock:
+        active = list(_active_concurrent)
+    for concurrent in active:
+        concurrent.kill_children()
+        concurrent.close()
+
+
+def num_active_children() -> int:
+    """Return the total number of live scorer child processes."""
+    with _active_concurrent_lock:
+        active = list(_active_concurrent)
+    return sum(concurrent.get_num_alive() for concurrent in active)
 
 
 # Additional imports needed for the functions below
@@ -222,21 +257,23 @@ def process_parallel_guesses(all_guesses: WordSet, words: WordSet) -> dict[str, 
     """
     scores: dict[str, float] = {}
     concurrent = Concurrent()
+    try:
+        # Queue-up the words to check
+        fill_queue(concurrent, all_guesses)
 
-    # Queue-up the words to check
-    fill_queue(concurrent, all_guesses)
+        # Launch the child jobs
+        launch_children(concurrent, words)
 
-    # Launch the child jobs
-    launch_children(concurrent, words)
+        # Collect results and manage processes
+        collect_results_from_processes(concurrent, scores, words)
 
-    # Collect results and manage processes
-    collect_results_from_processes(concurrent, scores, words)
-
-    # Clean up the child processes
-    if concurrent.is_child_abnormal_exit():
-        logging.debug('Child process error.')
-        concurrent.clean_up_dirty(2)
-    concurrent.join_processes()
+        # Clean up the child processes
+        if not _shutdown_requested and concurrent.is_child_abnormal_exit():
+            logging.debug('Child process error.')
+            concurrent.clean_up_dirty(2)
+        concurrent.join_processes()
+    finally:
+        concurrent.close()
     return scores
 
 

@@ -5,6 +5,7 @@ Desktop GUI for the Wordle solver and game.
 from __future__ import annotations
 
 import pathlib
+import queue
 import threading
 import tkinter as tk
 from tkinter import ttk
@@ -15,7 +16,7 @@ from clues import Clues
 from config import Config
 from dictionary import build_dictionaries
 from logic import Logic
-from myconcurrent import random_word
+from myconcurrent import num_active_children, random_word
 
 
 COLOR_MAP = {
@@ -56,17 +57,22 @@ class WordleGUI:
         self.config = Config()
         self.word_length = self.config.get_word_length()
         self.max_guesses = self.config.get_max_guesses()
-        self.configured_answer = self.config.get_answer().strip().lower()
+        self.configured_answer = (self.config.get_answer() or '').strip().lower()
         self.legal_guesses, self.legal_answers = build_dictionaries()
         if self._has_known_answer():
             self.legal_answers = self.legal_answers.copy()
             self.legal_answers.add(self.configured_answer)
 
+        self.side_panel_width = max(340, 220 + (self.word_length * 22))
+        self.side_panel_wrap = self.side_panel_width - 50
+        window_width = max(1040, 640 + (self.word_length * 72))
+
         self.root = tk.Tk()
         self.root.title('Wordle GUI')
-        self.root.geometry('1040x860')
-        self.root.minsize(980, 820)
+        self.root.geometry(f'{window_width}x860')
+        self.root.minsize(window_width - 60, 820)
         self.root.configure(bg=COLOR_MAP['paper'])
+        self.root.protocol('WM_DELETE_WINDOW', self._close_window)
 
         self.title_font = ('Georgia', 26, 'bold')
         self.subtitle_font = ('Georgia', 12)
@@ -77,6 +83,11 @@ class WordleGUI:
         self.solve_cells: list[list[tk.Label]] = []
         self.play_recommend_token = 0
         self.solve_recommend_token = 0
+        self.is_closing = False
+        self.shutdown_dialog: tk.Toplevel | None = None
+        self.recommendation_queue: queue.SimpleQueue[tuple[str, int, str, str]] = queue.SimpleQueue()
+        self.active_recommendation_threads: set[threading.Thread] = set()
+        self.recommendation_thread_lock = threading.Lock()
 
         self.play_answer = ''
         self.play_clues = Clues()
@@ -89,11 +100,141 @@ class WordleGUI:
         self._build_layout()
         self._new_play_game()
         self._reset_solver()
+        self.root.after(50, self._poll_recommendation_queue)
         self.root.after_idle(self._select_initial_tab)
 
     def run(self) -> None:
         """Launch the event loop."""
         self.root.mainloop()
+
+    def _close_window(self) -> None:
+        """Wait for active background work to finish before closing the GUI."""
+        if self.is_closing:
+            return
+        self.is_closing = True
+        self.play_recommend_token += 1
+        self.solve_recommend_token += 1
+        self._show_shutdown_dialog()
+        self._poll_shutdown_complete()
+
+    def _show_shutdown_dialog(self) -> None:
+        """Show a small modal while outstanding recommendation work finishes."""
+        self.shutdown_dialog = tk.Toplevel(self.root)
+        self.shutdown_dialog.title('Closing')
+        self.shutdown_dialog.transient(self.root)
+        self.shutdown_dialog.resizable(False, False)
+        self.shutdown_dialog.protocol('WM_DELETE_WINDOW', lambda: None)
+        self.shutdown_dialog.configure(bg=COLOR_MAP['paper'])
+        self.shutdown_dialog.grab_set()
+        frame = tk.Frame(self.shutdown_dialog, bg=COLOR_MAP['paper'], padx=24, pady=20)
+        frame.pack(fill='both', expand=True)
+        tk.Label(
+            frame,
+            text='Finishing background solver work...',
+            font=('Georgia', 16, 'bold'),
+            fg=COLOR_MAP['text'],
+            bg=COLOR_MAP['paper'],
+        ).pack(anchor='w')
+        self.shutdown_status_var = tk.StringVar(value='Please wait.')
+        tk.Label(
+            frame,
+            textvariable=self.shutdown_status_var,
+            font=self.body_font,
+            fg='#6b6256',
+            bg=COLOR_MAP['paper'],
+            justify='left',
+        ).pack(anchor='w', pady=(10, 0))
+        self.shutdown_dialog.update_idletasks()
+        self.shutdown_dialog.geometry(
+            f'+{self.root.winfo_rootx() + 80}+{self.root.winfo_rooty() + 80}'
+        )
+
+    def _poll_shutdown_complete(self) -> None:
+        """Keep the GUI alive until in-flight recommendation work finishes."""
+        active_threads = self._num_active_recommendations()
+        active_children = num_active_children()
+        if self.shutdown_dialog is not None and self.shutdown_status_var is not None:
+            if active_threads == 0 and active_children == 0:
+                message = 'Please wait.'
+            else:
+                parts = []
+                if active_threads:
+                    parts.append(f'{active_threads} background task{"s" if active_threads != 1 else ""}')
+                if active_children:
+                    parts.append(f'{active_children} worker process{"es" if active_children != 1 else ""}')
+                message = 'Waiting on ' + ' and '.join(parts) + '.'
+            self.shutdown_status_var.set(message)
+        if active_threads == 0 and active_children == 0:
+            self._finish_close()
+            return
+        self.root.after(100, self._poll_shutdown_complete)
+
+    def _finish_close(self) -> None:
+        """Destroy the GUI once all background work has completed."""
+        self._clear_tk_variables()
+        if self.shutdown_dialog is not None:
+            try:
+                self.shutdown_dialog.grab_release()
+            except tk.TclError:
+                pass
+            self.shutdown_dialog.destroy()
+            self.shutdown_dialog = None
+        self.root.destroy()
+
+    def _poll_recommendation_queue(self) -> None:
+        """Apply completed recommendation results from worker threads on the Tk thread."""
+        if self.is_closing:
+            return
+        while True:
+            try:
+                kind, token, guess, logic_text = self.recommendation_queue.get_nowait()
+            except queue.Empty:
+                break
+            if kind == 'play':
+                self._apply_play_recommendation(token, guess, logic_text)
+            else:
+                self._apply_solver_recommendation(token, guess, logic_text)
+        self.root.after(50, self._poll_recommendation_queue)
+
+    def _clear_tk_variables(self) -> None:
+        """Release Tk variables while the Tk main loop is still active."""
+        variable_names = (
+            'play_guess_var',
+            'play_status_var',
+            'play_recommendation_var',
+            'play_remaining_var',
+            'solve_guess_var',
+            'solve_clue_var',
+            'solve_status_var',
+            'solve_recommendation_var',
+            'solve_remaining_var',
+            'shutdown_status_var',
+        )
+        for name in variable_names:
+            variable = getattr(self, name, None)
+            if variable is not None:
+                try:
+                    variable.set('')
+                except tk.TclError:
+                    pass
+                setattr(self, name, None)
+
+    def _register_recommendation_thread(self, worker: threading.Thread) -> None:
+        """Track an in-flight recommendation thread."""
+        with self.recommendation_thread_lock:
+            self.active_recommendation_threads.add(worker)
+
+    def _unregister_recommendation_thread(self, worker: threading.Thread) -> None:
+        """Remove a completed recommendation thread from tracking."""
+        with self.recommendation_thread_lock:
+            self.active_recommendation_threads.discard(worker)
+
+    def _num_active_recommendations(self) -> int:
+        """Return the number of tracked recommendation threads still alive."""
+        with self.recommendation_thread_lock:
+            completed = {worker for worker in self.active_recommendation_threads if not worker.is_alive()}
+            self.active_recommendation_threads.difference_update(completed)
+            return len(self.active_recommendation_threads)
 
     def _build_layout(self) -> None:
         container = tk.Frame(self.root, bg=COLOR_MAP['paper'])
@@ -120,7 +261,18 @@ class WordleGUI:
         style = ttk.Style(self.root)
         style.theme_use('clam')
         style.configure('TNotebook', background=COLOR_MAP['paper'], borderwidth=0)
-        style.configure('TNotebook.Tab', padding=(18, 10), font=('Helvetica', 11, 'bold'))
+        style.configure(
+            'TNotebook.Tab',
+            padding=(18, 10),
+            font=('Helvetica', 11, 'bold'),
+            background='#e6d7c2',
+            foreground='#6b6256',
+        )
+        style.map(
+            'TNotebook.Tab',
+            background=[('selected', 'white'), ('active', '#efe4d2')],
+            foreground=[('selected', COLOR_MAP['accent']), ('active', COLOR_MAP['text'])],
+        )
 
         self.notebook = ttk.Notebook(container)
         self.notebook.pack(fill='both', expand=True)
@@ -140,7 +292,7 @@ class WordleGUI:
         left = self._card(top)
         left.pack(side='left', fill='both', expand=True, padx=(0, 8))
 
-        right = self._card(top, width=340)
+        right = self._card(top, width=self.side_panel_width)
         right.pack(side='left', fill='both')
         right.pack_propagate(False)
 
@@ -205,7 +357,8 @@ class WordleGUI:
         ).pack(anchor='w', pady=(14, 0))
 
         tk.Label(right, text='Solver wingman', font=('Georgia', 18, 'bold'),
-                 bg='white', fg=COLOR_MAP['text']).pack(anchor='w')
+                 bg='white', fg=COLOR_MAP['text'],
+                 wraplength=self.side_panel_wrap, justify='left').pack(anchor='w')
         self.play_recommendation_var = tk.StringVar()
         tk.Label(
             right,
@@ -213,7 +366,7 @@ class WordleGUI:
             font=('Helvetica', 16, 'bold'),
             bg='white',
             fg=COLOR_MAP['accent'],
-            wraplength=290,
+            wraplength=self.side_panel_wrap,
             justify='left',
         ).pack(anchor='w', pady=(14, 8))
         self.play_remaining_var = tk.StringVar()
@@ -223,7 +376,7 @@ class WordleGUI:
             font=self.body_font,
             bg='white',
             fg='#6b6256',
-            wraplength=290,
+            wraplength=self.side_panel_wrap,
             justify='left',
         ).pack(anchor='w')
         tk.Label(
@@ -232,7 +385,7 @@ class WordleGUI:
             font=self.body_font,
             bg='white',
             fg='#6b6256',
-            wraplength=290,
+            wraplength=self.side_panel_wrap,
             justify='left',
         ).pack(anchor='w', pady=(20, 0))
 
@@ -243,7 +396,7 @@ class WordleGUI:
         left = self._card(top)
         left.pack(side='left', fill='both', expand=True, padx=(0, 8))
 
-        right = self._card(top, width=340)
+        right = self._card(top, width=self.side_panel_width)
         right.pack(side='left', fill='both')
         right.pack_propagate(False)
 
@@ -340,7 +493,7 @@ class WordleGUI:
             font=('Georgia', 18, 'bold'),
             bg='white',
             fg=COLOR_MAP['text'],
-            wraplength=290,
+            wraplength=self.side_panel_wrap,
             justify='left',
         ).pack(anchor='w')
         self.solve_recommendation_var = tk.StringVar()
@@ -350,7 +503,7 @@ class WordleGUI:
             font=('Helvetica', 16, 'bold'),
             bg='white',
             fg=COLOR_MAP['accent'],
-            wraplength=290,
+            wraplength=self.side_panel_wrap,
             justify='left',
         ).pack(anchor='w', pady=(14, 8))
         self.solve_remaining_var = tk.StringVar()
@@ -360,7 +513,7 @@ class WordleGUI:
             font=self.body_font,
             bg='white',
             fg='#6b6256',
-            wraplength=290,
+            wraplength=self.side_panel_wrap,
             justify='left',
         ).pack(anchor='w')
 
@@ -576,10 +729,16 @@ class WordleGUI:
         clues = self.play_clues
 
         def worker() -> None:
-            guess, logic = best_guess(self.legal_guesses, remaining, clues)
-            self.root.after(0, lambda: self._apply_play_recommendation(token, guess, str(logic)))
+            try:
+                guess, logic = best_guess(self.legal_guesses, remaining, clues)
+                if not self.is_closing:
+                    self.recommendation_queue.put(('play', token, guess, str(logic)))
+            finally:
+                self._unregister_recommendation_thread(thread)
 
-        threading.Thread(target=worker, daemon=True).start()
+        thread = threading.Thread(target=worker, name=f'play-recommend-{token}')
+        self._register_recommendation_thread(thread)
+        thread.start()
 
     def _apply_play_recommendation(self, token: int, guess: str, logic_text: str) -> None:
         if token != self.play_recommend_token:
@@ -600,10 +759,16 @@ class WordleGUI:
         clues = self.solve_clues
 
         def worker() -> None:
-            guess, logic = best_guess(self.legal_guesses, remaining, clues)
-            self.root.after(0, lambda: self._apply_solver_recommendation(token, guess, str(logic)))
+            try:
+                guess, logic = best_guess(self.legal_guesses, remaining, clues)
+                if not self.is_closing:
+                    self.recommendation_queue.put(('solve', token, guess, str(logic)))
+            finally:
+                self._unregister_recommendation_thread(thread)
 
-        threading.Thread(target=worker, daemon=True).start()
+        thread = threading.Thread(target=worker, name=f'solve-recommend-{token}')
+        self._register_recommendation_thread(thread)
+        thread.start()
 
     def _apply_solver_recommendation(self, token: int, guess: str, logic_text: str) -> None:
         if token != self.solve_recommend_token:
@@ -615,7 +780,7 @@ class WordleGUI:
             self.solve_guess_var.set(guess)
 
     def _get_configured_start_guess(self) -> str:
-        start = self.config.get_start().strip().lower()
+        start = (self.config.get_start() or '').strip().lower()
         if start and start != 'list' and len(start) == self.word_length and start in self.legal_guesses:
             return start
         return ''

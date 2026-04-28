@@ -12,6 +12,8 @@ def setup_argument_parser(word_list_dictionary: str, max_children: int, logging_
     Set up and return the argument parser with all command line options.
     """
     parser = argparse.ArgumentParser(prog='wordle.py', description='Solve Wordle-like Puzzles')
+    parser.add_argument('--gui', action='store_true',
+                        help='launch the desktop GUI front end')
     parser.add_argument('--answer', '-a', help='the word to solve for when mode=auto')
     parser.add_argument('--mode', '-m', choices=['auto', 'clues', 'advise', 'play'],
                         default='auto',
