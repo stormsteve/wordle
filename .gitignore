@@ -27,6 +27,13 @@ wordle_cache_old.json
 american-english
 american-english-5-letter-words.txt
 
+# external or legacy files not meant for source control
+cfreshman_wordle-allowed-guesses.txt
+cfreshman_wordle-answers.txt
+rare_non_answers.orig.txt
+wordle_old.py
+wordle_old2.py
+
 # --- Ignore old experiments ---
 old/
 old2/
