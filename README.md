@@ -7,6 +7,10 @@
 - CLI solver with `auto`, `clues`, `advise`, and `play` modes
 - Desktop GUI launched with `--gui`
 - Search and scoring helpers for choosing strong guesses
+- Adjustable word length for Wordle-like variants
+- Parallel processing support for heavier guess evaluation
+- Selectable optimization algorithms for guess scoring
+- Configurable dictionary input files
 - Optional cache builder for second-guess performance
 - Test suite covering the main solver and interface modules
 
@@ -55,15 +59,46 @@ Get interactive solving help:
 python3 wordle.py --mode advise
 ```
 
+Use a custom word length:
+
+```bash
+python3 wordle.py --length 6
+```
+
+Choose a different scoring algorithm:
+
+```bash
+python3 wordle.py --rate-alg 2
+```
+
+Increase worker processes for heavier searches:
+
+```bash
+python3 wordle.py --processes 8
+```
+
 Run tests:
 
 ```bash
 pytest
 ```
 
+## Capabilities
+
+- `--length` supports Wordle-like puzzles beyond the default 5-letter game
+- `--mode auto` solves for a known answer
+- `--mode clues` narrows candidates from clue patterns you enter
+- `--mode advise` recommends guesses while you play elsewhere
+- `--mode play` lets you play locally
+- `--rate-alg` switches between available guess-rating strategies
+- `--processes` controls parallel worker usage for more expensive searches
+- `--dictionary` lets you point the solver at a different source word list
+
 ## Cache Builder
 
 `build_cache.py` precomputes second-guess cache data and writes it to `wordle_cache.json`. This can improve solver performance for runs that use cached second-guess lookups.
+
+While building the cache, it also evaluates the configured starting words and computes their average number of guesses across the answer set.
 
 Run it with:
 
