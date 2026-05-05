@@ -61,6 +61,18 @@ Run tests:
 pytest
 ```
 
+## Cache Builder
+
+`build_cache.py` precomputes second-guess cache data and writes it to `wordle_cache.json`. This can improve solver performance for runs that use cached second-guess lookups.
+
+Run it with:
+
+```bash
+python3 build_cache.py
+```
+
+It is a batch utility rather than a normal CLI entry point, so it starts processing immediately when launched.
+
 ## Repository Layout
 
 - `wordle.py`: main entry point
