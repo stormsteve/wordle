@@ -2,21 +2,30 @@
 __pycache__/
 *.py[cod]
 *.pyo
+.mypy_cache/
+.pytest_cache/
+.venv/
+venv/
+.coverage
 
 # --- Backup / temp files ---
 *~
 *.bak
 *.swp
+*.orig
 
 # --- OS junk ---
 .DS_Store
 Thumbs.db
 
-# --- Project-specific junk ---
+# --- Project-specific generated files ---
+wordle_cache.json
 wordle_cache_old.json
+.codex
 
 # get from spelling checker package
 american-english
+american-english-5-letter-words.txt
 
 # --- Ignore old experiments ---
 old/
