@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Steve Gale <galesteven@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Integration-style tests for the main game flow."""
 
 from __future__ import annotations

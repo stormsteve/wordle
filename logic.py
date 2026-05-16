@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Steve Gale <galesteven@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
     Logic is a class to keep track of the logic used for a particular guess.
 """

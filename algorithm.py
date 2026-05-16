@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Steve Gale <galesteven@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """
 Implements the optimization logic for finding the best guess

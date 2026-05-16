@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Steve Gale <galesteven@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Tests for command-line parsing helpers."""
 
 from argparse import Namespace

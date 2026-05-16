@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Steve Gale <galesteven@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Tests for dictionary filtering."""
 
 from dictionary import filter_legal_guesses, load_words_from_file

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Steve Gale <galesteven@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 The second guess in a game is special.
 We can optimize performance by pre-computing the best second guess
