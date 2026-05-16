@@ -1,6 +1,8 @@
 # Wordle
 
-`wordle` is a Python Wordle solver and play tool with both CLI and Tkinter GUI modes. It can solve a known answer, narrow candidates from clue patterns, recommend guesses interactively, or let you play locally.
+Everything Wordle -- Play, Solve, Assist
+
+`wordle` is a Python toolkit for Wordle: solve known answers, narrow candidates from clue patterns, get interactive guess advice, or play locally through either the CLI or the Tkinter GUI.
 
 ## Features
 
