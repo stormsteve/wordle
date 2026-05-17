@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 Steve Gale <galesteven@gmail.com>
+# SPDX-FileCopyrightText: 2026 Steven M. Gale
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """Tests for accumulated clue filtering."""
