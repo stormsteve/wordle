@@ -129,3 +129,7 @@ The generated cache file `wordle_cache.json` is also intentionally not tracked.
 ## License
 
 This project is licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE).
+
+## Author
+
+Steve Gale
