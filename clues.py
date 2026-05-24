@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Hold the knowledge gained from the clues.
+Track accumulated clue state and candidate-word constraints.
+
+This module models the information learned from prior guesses and applies it
+to filter possible answers.
 """
 
 from typing import Iterator

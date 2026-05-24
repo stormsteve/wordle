@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Implements the optimization logic for finding the best guess
+Score candidate guesses against the current set of possible answers.
+
+This module provides the core guess-rating algorithms used to compare Wordle
+guesses, including average, median, and worst-case scoring strategies.
 """
 
 from __future__ import annotations

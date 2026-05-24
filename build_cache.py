@@ -3,7 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-A program to build the cache file for wordle.
+Build and refresh the second-guess cache for the Wordle solver.
+
+This batch utility precomputes cached second guesses and summarizes starting
+word performance across the answer set.
 """
 
 from __future__ import annotations     # For Queue type annotations

@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-User interface functions for Wordle game input/output handling.
+Handle command-line input and output for interactive Wordle play.
+
+This module contains the CLI-oriented prompting, clue entry, and board display
+helpers used outside the GUI.
 """
 
 from mytypes import WordSet, LetterList

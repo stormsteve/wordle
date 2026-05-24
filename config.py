@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Hold the Wordle Solver configuration
+Store shared runtime configuration for the Wordle solver.
+
+This module exposes the singleton configuration object used by the CLI, GUI,
+and solver logic.
 """
 
 from __future__ import annotations

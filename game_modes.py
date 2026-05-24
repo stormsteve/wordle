@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Game mode classes for different Wordle game variants.
+Define the mode-specific hooks used by the Wordle game loop.
+
+This module provides the mode classes that customize guess display, input
+handling, and clue collection.
 """
 
 from mytypes import WordSet, LetterList

@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Utility class for working with concurrent processes
+Coordinate worker processes used for parallel guess scoring.
+
+This module manages child-process queues, lifecycle helpers, and shutdown
+behavior for concurrent solver work.
 """
 
 from __future__ import annotations
