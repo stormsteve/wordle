@@ -118,6 +118,7 @@ It is a batch utility rather than a normal CLI entry point, so it starts process
 - `algorithm.py`, `best_guess.py`, `second_guess.py`: guess scoring and optimization
 - `dictionary.py` and `*.txt`: dictionary inputs and curated answer/guess lists
 - `build_cache.py`: cache generation utility
+- `spelling_bee_cheat.py`: standalone helper for NYT Spelling Bee, separate from the main Wordle solver flow
 - `tests/`: automated tests
 
 ## Data Files
