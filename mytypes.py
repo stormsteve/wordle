@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Define type hints with meaningful names.
+Shared type aliases used across the Wordle solver modules.
 """
 from typing import Set, List, Union
 

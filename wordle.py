@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Wordle Solver
+Command-line entry point for the Wordle solver application.
 
-A Python program to solve NYT Wordle puzzles using optimal guessing strategies.
-Supports multiple modes including automatic solving, clue-based solving, advice mode, and interactive play.
+This module initializes logging, parses command-line arguments, and starts the
+main game loop.
 """
 
 import logging

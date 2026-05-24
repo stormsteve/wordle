@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Build the word dictionary.
+Load and filter the word lists used by the solver.
+
+This module reads dictionary files, derives legal guess and answer sets, and
+applies project-specific exclusions.
 """
 
 import re                         # regex used for building the dict

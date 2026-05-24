@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Game logic functions for Wordle game flow.
+Coordinate setup and round-by-round Wordle game flow.
+
+This module selects the active mode, validates startup state, chooses the
+answer when needed, and runs the main game loop.
 """
 
 from mytypes import WordSet

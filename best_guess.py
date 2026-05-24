@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Guess selection and scoring logic for Wordle game.
+Choose the next guess from the current candidate sets.
+
+This module combines scoring, cache lookups, and answer filtering to select
+the most useful next Wordle guess.
 """
 
 from mytypes import WordSet
