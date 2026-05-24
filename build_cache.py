@@ -97,8 +97,11 @@ first_guess_words = {
 
 class GuessCache (SecondGuessCache):
     """
-    Extend SecondGuessCache. Find a best guess and signal the calling processes
-    when it is time to write the newly updated cache.
+    Extend SecondGuessCache with cache-building workflow support.
+
+    In addition to cached lookups, this class computes missing best second
+    guesses and notifies the parent process when new cache entries are ready to
+    persist.
     """
 
     def cached_best_guess(

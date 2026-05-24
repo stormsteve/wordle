@@ -19,7 +19,12 @@ _shutdown_requested = False
 
 
 class Concurrent:
-    """Utility class for working with concurrent processes"""
+    """
+    Hold worker processes and the queues they share.
+
+    This wrapper centralizes lifecycle management so callers can launch,
+    monitor, and clean up child scorer processes consistently.
+    """
     def __init__(self) -> None:
         self._processes:list[Process] = []
         self._inqueue: Queue[str] = Queue() # pylint: disable=unsubscriptable-object

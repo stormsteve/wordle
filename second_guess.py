@@ -20,8 +20,10 @@ from clues   import Clues         # Clues gathered so far
 
 class SecondGuess ():
     """
-    Class used for keeping a single guess and its score. This is used for
-    generating the JSON cache file holding the optimal second guesses.
+    Store one cached second-guess recommendation and its score.
+
+    Instances of this class are serialized into the JSON cache used to speed
+    up repeated second-guess lookups.
     """
     def __init__(self, guess:str, score:float) -> None:
         self._guess:str = guess
@@ -46,7 +48,12 @@ class SecondGuess ():
 
 
 class SecondGuessCache ():
-    """Handle the second guess and use a cache if possible"""
+    """
+    Manage the on-disk cache of optimized second-guess recommendations.
+
+    The cache is keyed by the opening guess and resulting clue pattern so the
+    solver can reuse previously computed second moves.
+    """
     def __init__(self, dont_load:Optional[WordSet] = None) -> None:
         """
         dont_load:WordSet is a set of words not to load from the file

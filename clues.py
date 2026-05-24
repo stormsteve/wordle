@@ -21,8 +21,10 @@ def _max_word_score() -> int:
 
 class Yellows ():
     """
-    Hold the yellow clues. There is a set of yellow letters for each
-    of the possible letter positions.
+    Track yellow-letter exclusions by position.
+
+    Each index stores the letters known to be in the answer but not in that
+    specific position.
     """
     def __init__(self) -> None:
         self._yellows: list[LetterSet] = [set() for _ in range(_word_length())]
@@ -64,10 +66,11 @@ class Yellows ():
 
 class RequiredLetters ():
     """
-    Keep a record of the letters required by a yellow clue. For each yellow letter found, we keep a
-    tuple with the minimum and maximum number of times that the letter must appear in the answer.
-    This is for handling cases with duplicate letters in the answer or duplicate letters in the
-    guess.
+    Track per-letter count bounds implied by prior clues.
+
+    Each entry records the minimum and maximum number of times a letter may
+    appear in the answer, which lets the solver handle repeated letters
+    correctly.
     """
     def __init__(self) -> None:
         self._letter_map: dict[str, tuple[int,int]] = {}
@@ -107,29 +110,20 @@ class RequiredLetters ():
 
 class Clues ():
     """
-    Clues is a class to keep track of the guesses made and the resulting clues for those guesses.
-    It holds a list of the guesses and all of the accumlulated clue information so far.
+    Accumulate clue state across guesses and filter candidate answers.
 
-    The object can also filter a set of words based on the clues it holds.
-
-    This is the work horse of the program, in terms of working within the games rules.
-
-    Members:
-        _blacks: set of letters not the the answer
-        _greens: list of word_length positions, some might be letters
-        _yellows: is a list of word_length positions, each a set letters
-        _required: mapping of all of the known required letters to a touple with the minimum and
-                   maximum number of required instances of that letter.
-        _guesses: list of the guesses made so far
+    The object keeps the known black, green, and yellow constraints, tracks
+    repeated-letter requirements, and remembers the guess history used to
+    build that state.
     """
 
     def __init__(self) -> None:
-        self._blacks: LetterSet = set()
-        self._greens = [''] * _word_length()
-        self._yellows = Yellows()
-        self._required = RequiredLetters()
-        self._guesses: LetterList = []
-        self._last_clue: LetterList = []
+        self._blacks: LetterSet = set()  # Letters known not to appear in the answer.
+        self._greens = [''] * _word_length()  # Fixed letters by position.
+        self._yellows = Yellows()  # Letters that cannot appear in each position.
+        self._required = RequiredLetters()  # Min/max required counts for repeated letters.
+        self._guesses: LetterList = []  # Guess history in play order.
+        self._last_clue: LetterList = []  # Most recent clue pattern.
 
     def __repr__(self) -> str:
         return (f'{self._greens=} {self._yellows=} {self._blacks=} {self._required=} '

@@ -11,7 +11,12 @@ from typing import Type, Callable
 from mytypes import WordSet        # My type hints
 
 class Config: # pylint: disable=too-many-instance-attributes,too-many-public-methods
-    """Configuration Params. Singleton patttern."""
+    """
+    Singleton container for runtime solver configuration.
+
+    This holds command-line and application settings such as dictionary paths,
+    word length, mode selection, caching, and algorithm choices.
+    """
     _instance = None
     _default_function_initialized = False
 

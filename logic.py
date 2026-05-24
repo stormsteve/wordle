@@ -10,12 +10,11 @@ from mytypes import WordSet       # My type hints
 
 class Logic:
     """
-    Logic is a class to keep track of the logic used for a particular guess. It
-    holds the name of the logic, the evaluated score of the word chosen, and
-    the list of possible words it chose from.
+    Record the reasoning metadata for one chosen guess.
 
-    This object is constructed when choosing a guess word so that we can
-    display the logic used to the end-user.
+    A Logic instance stores the label for the selection strategy, the
+    resulting score, and the candidate word set that was considered so the
+    solver can explain its recommendation to the user.
     """
 
     def __init__(self) -> None:

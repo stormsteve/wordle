@@ -13,9 +13,10 @@ from user_interface import input_guess
 
 class Mode:
     """
-    Base class for different game modes.
+    Base interface for the solver's play and clue-entry modes.
 
-    Subclasses implement mode-specific behavior for guess display and input.
+    Subclasses override the small set of hooks that control how guesses are
+    shown, how user input is collected, and where clue data comes from.
     """
 
     @staticmethod
@@ -41,7 +42,7 @@ class Mode:
 
 class ModeAdvise(Mode):
     """
-    Mode for advising the user on guesses while allowing custom input.
+    Interactive helper mode that recommends a guess but accepts user input.
     """
 
     @staticmethod
@@ -67,7 +68,7 @@ class ModeAdvise(Mode):
 
 class ModeClues(Mode):
     """
-    Mode for solving based on user-provided clues.
+    Solver mode that displays guesses and expects clue feedback each round.
     """
 
     @staticmethod
@@ -78,7 +79,7 @@ class ModeClues(Mode):
 
 class ModePlay(Mode):
     """
-    Mode for interactive play where the program selects the answer.
+    Play mode for games where the application knows the answer internally.
     """
 
     @staticmethod
