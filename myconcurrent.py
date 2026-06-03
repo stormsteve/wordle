@@ -112,7 +112,11 @@ from mytypes import WordSet
 from config import Config
 
 
-def get_guess_score(conc: Concurrent, words: WordSet, pid: int) -> bool:
+def get_guess_score(
+        outqueue: Queue[str], # pylint: disable=unsubscriptable-object
+        inqueue: Queue[str],  # pylint: disable=unsubscriptable-object
+        words: WordSet,
+        pid: int) -> bool:
     """
     Child process function to compute and score guesses.
 
@@ -120,7 +124,8 @@ def get_guess_score(conc: Concurrent, words: WordSet, pid: int) -> bool:
     Exits if CPU load is too high.
 
     Args:
-        conc (Concurrent): The concurrent processing object for queues.
+        outqueue (Queue[str]): Queue of guesses to score.
+        inqueue (Queue[str]): Queue for score results.
         words (WordSet): The set of possible answers.
         pid (int): Process ID for load checking.
 
@@ -132,11 +137,11 @@ def get_guess_score(conc: Concurrent, words: WordSet, pid: int) -> bool:
     psutil.cpu_percent() # First call always returns 0.0, so ignore the result
     while True:
         try:
-            guess = conc.get_outqueue().get(block = True, timeout = 0.25)
+            guess = outqueue.get(block = True, timeout = 0.25)
             score = accurate(words, guess, min_score)
             # Send our new lowest-score guess to the master. Include tries for logging
             if score <= min_score:
-                conc.get_inqueue().put(f'{guess}:{score}')
+                inqueue.put(f'{guess}:{score}')
                 min_score = score
                 # Exit this process if the load is too high, but make sure to leave at least 1
                 # child running. We do the check here so that it doesn't happen too often
@@ -171,7 +176,8 @@ def launch_child(conc: Concurrent, words: WordSet, pid: int) -> None:
         words (WordSet): The set of possible answers.
         pid (int): Process ID.
     """
-    p = Process(target = get_guess_score, args = (conc, words, pid))
+    p = Process(target = get_guess_score,
+                args = (conc.get_outqueue(), conc.get_inqueue(), words, pid))
     p.start()
     conc.add_process(p)
 
