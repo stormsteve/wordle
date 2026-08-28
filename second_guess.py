@@ -116,7 +116,9 @@ class SecondGuessCache ():
         """Serialize the cache and write it to a file."""
         if self._dirty:
             self._dirty = False
-            with open(Config().get_cache_file_name(),'w',encoding='UTF-8') as f:
+            cache_file = pathlib.Path(Config().get_cache_file_name())
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(cache_file, 'w', encoding='UTF-8') as f:
                 f.write(self.to_json())
                 f.write('\n')
 

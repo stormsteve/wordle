@@ -12,6 +12,7 @@ and solver logic.
 # pylint: disable=import-outside-toplevel,attribute-defined-outside-init
 
 from __future__ import annotations
+import pathlib
 from typing import Type, Callable
 
 from mytypes import WordSet        # My type hints
@@ -59,6 +60,7 @@ class Config: # pylint: disable=too-many-instance-attributes,too-many-public-met
 
         # Cache file name
         self._cache_file_name = 'wordle_cache.json'
+        self._cache_dir = '.'
 
         # word list dictionary. Can be set via the command line.
         self._word_list_dictionary: str = 'american-english'
@@ -110,6 +112,10 @@ class Config: # pylint: disable=too-many-instance-attributes,too-many-public-met
     def set_use_cache(self, use:bool) -> None:
         """Set the flag to indicate if we use the word cache file."""
         self._use_cache = use
+
+    def set_cache_dir(self, directory: str) -> None:
+        """Set the directory containing the cache file."""
+        self._cache_dir = directory
 
     def set_mode(self, mode:str) -> None:
         """Set the game play mode."""
@@ -185,8 +191,8 @@ class Config: # pylint: disable=too-many-instance-attributes,too-many-public-met
         return self._max_word_score
 
     def get_cache_file_name(self) -> str:
-        """Get the cache file name."""
-        return self._cache_file_name
+        """Get the complete path to the cache file."""
+        return str(pathlib.Path(self._cache_dir) / self._cache_file_name)
 
     def get_algorithm(self) -> Callable[[WordSet, str, float], float]:
         """Get the scoring algorithm."""

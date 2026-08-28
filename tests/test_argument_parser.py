@@ -10,6 +10,7 @@ import pytest
 from algorithm import accurate_avg, accurate_max, accurate_median
 from argument_parser import set_configuration_from_args, setup_argument_parser
 from config import Config
+from second_guess import SecondGuessCache
 
 
 def test_setup_argument_parser_uses_expected_defaults():
@@ -25,6 +26,7 @@ def test_setup_argument_parser_uses_expected_defaults():
     assert args.dictionary == "words.txt"
     assert args.logging == "error"
     assert args.cache is None
+    assert args.cache_dir == "."
 
 
 def test_set_configuration_from_args_selects_average_algorithm_and_enables_cache():
@@ -74,6 +76,38 @@ def test_set_configuration_from_args_normalizes_word_arguments():
 
     assert config.get_start() == "crane"
     assert config.get_answer() == "planet"
+
+
+def test_set_configuration_from_args_sets_cache_directory(tmp_path):
+    config = Config()
+
+    set_configuration_from_args(
+        Namespace(
+            max=6,
+            length=5,
+            mode="auto",
+            start="list",
+            answer=None,
+            processes=0,
+            dictionary="words.txt",
+            rate_alg=1,
+            cache=None,
+            cache_dir=str(tmp_path),
+        )
+    )
+
+    assert config.get_cache_file_name() == str(tmp_path / "wordle_cache.json")
+
+
+def test_cache_serialization_creates_cache_directory(tmp_path):
+    config = Config()
+    config.set_cache_dir(str(tmp_path / "nested" / "cache"))
+    cache = SecondGuessCache()
+
+    cache.add2("crane;bbbbb", "slate", 1.5)
+    cache.serialize()
+
+    assert (tmp_path / "nested" / "cache" / "wordle_cache.json").exists()
 
 
 @pytest.mark.parametrize("option", ["--max", "--processes"])

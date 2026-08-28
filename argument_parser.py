@@ -64,6 +64,8 @@ def setup_argument_parser(
     parser.add_argument('--no-cache', '-c', dest='cache',
                         help='don\'t use a cache file for second guess performance',
                         default=None, action='store_true')
+    parser.add_argument('--cache-dir', default='.', metavar='DIR',
+                        help='directory for the cache file (default: current directory)')
     parser.add_argument('--logging', '-l', choices=logging_levels.keys(), default='error')
     parser.add_argument('--dictionary', '-d', default=word_list_dictionary,
                         help=f'dictionary word list file, default is {word_list_dictionary}')
@@ -82,6 +84,7 @@ def set_configuration_from_args(args) -> None:
     config.set_answer(args.answer.strip().lower() if args.answer else None)
     config.set_max_child_processes(args.processes)
     config.set_word_list_dictionary(args.dictionary)
+    config.set_cache_dir(getattr(args, 'cache_dir', '.'))
 
     # Convert the user choice into a function pointer
     from algorithm import accurate_avg, accurate_median, accurate_max
@@ -150,7 +153,10 @@ def parse_command_line() -> argparse.Namespace:
 
     word_list_dictionary = config.get_word_list_dictionary()
     if not pathlib.Path(word_list_dictionary).exists():
-        word_list_dictionary = config.get_word_list_dictionary2()
+        bundled_dictionary = pathlib.Path(__file__).resolve().parent / word_list_dictionary
+        word_list_dictionary = (
+            str(bundled_dictionary) if bundled_dictionary.exists()
+            else config.get_word_list_dictionary2())
         config.set_word_list_dictionary(word_list_dictionary)
 
     parser = setup_argument_parser(word_list_dictionary, max_children, logging_levels)

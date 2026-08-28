@@ -3,6 +3,7 @@
 
 """Tests for dictionary filtering."""
 
+import dictionary
 from dictionary import filter_legal_guesses, load_words_from_file
 
 
@@ -15,6 +16,17 @@ def test_load_words_from_file_splits_by_length(tmp_path):
     assert legal_guesses == {"crane"}
     assert one_char_less == {"rate"}
     assert two_chars_less == {"ate"}
+
+
+def test_bundled_word_files_are_resolved_from_module_directory(monkeypatch, tmp_path):
+    bundled_file = tmp_path / "bundled.txt"
+    bundled_file.write_text("crane\n", encoding="utf-8")
+    working_directory = tmp_path / "working-directory"
+    working_directory.mkdir()
+    monkeypatch.setattr(dictionary, "__file__", str(tmp_path / "dictionary.py"))
+    monkeypatch.chdir(working_directory)
+
+    assert dictionary.load_word_set_from_file("bundled.txt") == {"crane"}
 
 
 def test_filter_legal_guesses_removes_roman_numerals_not_words_and_non_answers():
