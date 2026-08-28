@@ -96,7 +96,7 @@ def setup_logging_from_args(args, logging_levels: dict[str, int]) -> None:
                  config.get_algorithm().__name__)
 
 
-def parse_command_line() -> None:
+def parse_command_line() -> argparse.Namespace:
     """
     Parse command line arguments and configure the program.
 
@@ -134,3 +134,4 @@ def parse_command_line() -> None:
 
     set_configuration_from_args(args)
     setup_logging_from_args(args, logging_levels)
+    return args
