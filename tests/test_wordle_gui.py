@@ -113,7 +113,7 @@ def test_shutdown_waits_for_threads_and_worker_processes(monkeypatch):
     gui._poll_shutdown_complete()
 
     assert gui.shutdown_status_var.value == 'Waiting on 1 background task and 2 worker processes.'
-    assert finished == []
+    assert not finished
     assert gui.root.scheduled == [(100, gui._poll_shutdown_complete)]
 
     worker.alive = False

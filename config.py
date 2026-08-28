@@ -8,6 +8,9 @@ This module exposes the singleton configuration object used by the CLI, GUI,
 and solver logic.
 """
 
+# The default algorithm is imported lazily to avoid a module import cycle.
+# pylint: disable=import-outside-toplevel,attribute-defined-outside-init
+
 from __future__ import annotations
 from typing import Type, Callable
 

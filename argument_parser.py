@@ -5,6 +5,9 @@
 Command line argument parsing for Wordle game.
 """
 
+# Local imports keep optional dependencies and GUI startup lazy.
+# pylint: disable=import-outside-toplevel
+
 import argparse
 import pathlib
 from config import Config
@@ -26,7 +29,10 @@ def _non_negative_int(value: str) -> int:
     return parsed
 
 
-def setup_argument_parser(word_list_dictionary: str, max_children: int, logging_levels: dict[str, int]) -> argparse.ArgumentParser:
+def setup_argument_parser(
+        word_list_dictionary: str,
+        max_children: int,
+        logging_levels: dict[str, int]) -> argparse.ArgumentParser:
     """
     Set up and return the argument parser with all command line options.
     """
@@ -43,7 +49,7 @@ def setup_argument_parser(word_list_dictionary: str, max_children: int, logging_
                         + 'clues, play - will let you play the game')
     parser.add_argument('--start', '-s', default='list', metavar='WORD',
                         help='list - the first guess will be based on a list '
-                        + f'(default), '
+                        + '(default), '
                         + 'Otherwise the first guess will be the WORD provided')
     parser.add_argument('--length', '-w', choices=list(range(1, 20)), default=5,  # Assuming max 19
                         type=int, help='sets the word length (default=5)')
@@ -107,9 +113,10 @@ def setup_logging_from_args(args, logging_levels: dict[str, int]) -> None:
     logging.info('Options: ans=%s mode=%s start=%s word_len=%d max_guesses=%d use_cache=%s',
                  config.get_answer(), config.get_mode(), config.get_start(),
                  config.get_word_length(), config.get_max_guesses(), config.get_use_cache())
-    logging.info('Options: max_child_processes=%d dictionary=%s algorithm=%s',
-                 config.get_max_child_processes(), config.get_word_list_dictionary(),
-                 config.get_algorithm().__name__)
+    logging.info(
+        'Options: max_child_processes=%d dictionary=%s algorithm=%s',
+        config.get_max_child_processes(), config.get_word_list_dictionary(),
+        config.get_algorithm().__name__)
 
 
 def parse_command_line() -> argparse.Namespace:
@@ -131,7 +138,8 @@ def parse_command_line() -> argparse.Namespace:
 
     config = Config()
     # The maximum number of child processes to use is the percent_idle * num_processors
-    max_children = max(round((len(cpus) * (1 - cpu_percent) * config.get_max_cpu_percent()) / 100), 0)
+    max_children = max(
+        round((len(cpus) * (1 - cpu_percent) * config.get_max_cpu_percent()) / 100), 0)
 
     logging_levels = {'critical': 50,  # logging.CRITICAL
                       'error': 40,     # logging.ERROR

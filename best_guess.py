@@ -8,6 +8,10 @@ This module combines scoring, cache lookups, and answer filtering to select
 the most useful next Wordle guess.
 """
 
+# Late imports below are intentional because this flat module layout has
+# circular dependencies between configuration, clues, and guess selection.
+# pylint: disable=import-outside-toplevel,reimported,redefined-outer-name,wrong-import-order,comparison-with-callable,too-many-locals
+
 from mytypes import WordSet
 from myconcurrent import process_accurate_logic
 from logic import Logic
@@ -36,14 +40,14 @@ def _log_a_few_scores(results: list[str], scores: dict[str, float]) -> None:
 
     # Find the index of the first value that's different from lowest_value
     num_to_log = len(results) - 1
-    for i in range(len(results)):
-        if scores[results[i]] > lowest_value:
+    for i, result in enumerate(results):
+        if scores[result] > lowest_value:
             num_to_log = i
             break
 
     # Log all entries with the lowest value plus the next entry (if it exists) in reverse order
     if num_to_log > 10:
-        logging.info(f'accurate score {num_to_log-1} words')
+        logging.info('accurate score %d words', num_to_log - 1)
         num_to_log = 10
 
     for i in range(num_to_log, -1, -1):

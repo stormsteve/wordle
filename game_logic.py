@@ -8,6 +8,10 @@ This module selects the active mode, validates startup state, chooses the
 answer when needed, and runs the main game loop.
 """
 
+# Imports are kept local to preserve the flat module dependency graph and to
+# avoid loading optional UI components for CLI-only use.
+# pylint: disable=import-outside-toplevel,reimported,too-many-arguments,too-many-positional-arguments,too-many-locals
+
 from mytypes import WordSet
 from dictionary import build_dictionaries
 from clues import Clues
@@ -46,12 +50,15 @@ def obtain_answer(legal_answers: WordSet) -> str:
                 import sys
                 sys.exit(1)
             else:
-                logging.error('%s is not a recognized word. Treating it as a custom answer.', answer)
+                logging.error(
+                    '%s is not a recognized word. Treating it as a custom answer.', answer)
                 legal_answers.add(answer)
     return answer
 
 
-def setup_initial_guess(start: str, word_length: int, legal_guesses: WordSet, legal_answers: WordSet, logger) -> tuple[str, Logic]:
+def setup_initial_guess(
+        start: str, word_length: int, legal_guesses: WordSet,
+        legal_answers: WordSet, logger) -> tuple[str, Logic]:
     """
     Set up the initial guess and logic for the game.
     """
@@ -122,7 +129,9 @@ def initialize_game() -> tuple[WordSet, WordSet, Clues, str, str, Logic, type]:
     return legal_guesses, legal_answers, clues, answer, guess, logic, mode_class
 
 
-def execute_game_rounds(legal_guesses: WordSet, legal_answers: WordSet, clues, answer: str, guess: str, logic: Logic, mode_class: type) -> str:
+def execute_game_rounds(
+        legal_guesses: WordSet, legal_answers: WordSet, clues, answer: str,
+        guess: str, logic: Logic, mode_class: type) -> str:
     """
     Execute the main game rounds loop until completion.
     """
@@ -144,7 +153,9 @@ def execute_game_rounds(legal_guesses: WordSet, legal_answers: WordSet, clues, a
             import logging
             logging.debug('%d guess=%s %s', row_num, guess, clues)
             from user_interface import display_row
-            display_row(row_num, clue_list, guess, str(logic) if config.get_mode() != 'play' else '')
+            display_row(
+                row_num, clue_list, guess,
+                str(logic) if config.get_mode() != 'play' else '')
             if clue_list == ['g']*word_length:
                 print(f'Solved for {guess.upper()} in {row_num} guesses')
                 return guess
@@ -166,7 +177,8 @@ def game_loop() -> None:
 
     legal_guesses, legal_answers, clues, answer, guess, logic, mode_class = initialize_game()
 
-    final_guess = execute_game_rounds(legal_guesses, legal_answers, clues, answer, guess, logic, mode_class)
+    final_guess = execute_game_rounds(
+        legal_guesses, legal_answers, clues, answer, guess, logic, mode_class)
 
     # Show the final board
     from user_interface import display_board

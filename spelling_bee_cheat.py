@@ -2,10 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Steven M. Gale
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+"""Find words for a New York Times Spelling Bee letter set."""
+
 import sys
 import argparse
 
-def main():
+def main() -> None:
+    """Parse the puzzle letters and print matching dictionary words."""
     parser = argparse.ArgumentParser(description='Find Spelling Bee words')
     parser.add_argument('center_letter', help='Center letter (must be lowercase)')
     parser.add_argument('other_letters', help='Other 6 letters (must be lowercase)')
@@ -34,15 +37,15 @@ def main():
 
     # Read dictionary
     try:
-        with open(args.dict, 'r') as f:
+        with open(args.dict, 'r', encoding='UTF-8') as f:
             words = [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
         print(f"Error: Dictionary file '{args.dict}' not found")
         sys.exit(1)
 
     # ANSI escape codes for bold
-    BOLD = '\033[1m'
-    RESET = '\033[0m'
+    bold = '\033[1m'
+    reset = '\033[0m'
 
     valid_words = []
     pangrams = []
@@ -64,7 +67,7 @@ def main():
     # Print results, pangrams in bold
     for word in sorted(valid_words):
         if word in pangrams:
-            print(f"{BOLD}{word}{RESET}")
+            print(f"{bold}{word}{reset}")
         else:
             print(word)
 

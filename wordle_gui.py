@@ -5,6 +5,10 @@
 Desktop GUI for the Wordle solver and game.
 """
 
+# The GUI intentionally centralizes Tk state and follows the existing
+# flat-module architecture.
+# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-public-methods,too-few-public-methods,attribute-defined-outside-init,cyclic-import,line-too-long
+
 from __future__ import annotations
 
 import pathlib

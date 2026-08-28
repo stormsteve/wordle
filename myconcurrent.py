@@ -8,6 +8,10 @@ This module manages child-process queues, lifecycle helpers, and shutdown
 behavior for concurrent solver work.
 """
 
+# Worker imports are deferred until after lifecycle types are defined, and the
+# module-level shutdown flag is intentional shared process state.
+# pylint: disable=wrong-import-position,import-outside-toplevel,global-statement,line-too-long
+
 from __future__ import annotations
 
 from multiprocessing import Process, Queue
@@ -18,7 +22,7 @@ from threading import Lock
 
 _active_concurrent_lock = Lock()
 _active_concurrent: set["Concurrent"] = set()
-_shutdown_requested = False
+_SHUTDOWN_REQUESTED = False
 
 
 class Concurrent:
@@ -59,7 +63,7 @@ class Concurrent:
 
     def is_child_abnormal_exit(self) -> bool:
         """Look for abnormally terminated child processes"""
-        if _shutdown_requested:
+        if _SHUTDOWN_REQUESTED:
             return False
         for p in self._processes:
             if p.exitcode is not None and p.exitcode != 0:
@@ -88,8 +92,8 @@ class Concurrent:
 
 def shutdown_active_children() -> None:
     """Kill any active child scorer processes."""
-    global _shutdown_requested
-    _shutdown_requested = True
+    global _SHUTDOWN_REQUESTED
+    _SHUTDOWN_REQUESTED = True
     with _active_concurrent_lock:
         active = list(_active_concurrent)
     for concurrent in active:
@@ -284,7 +288,7 @@ def process_parallel_guesses(all_guesses: WordSet, words: WordSet) -> dict[str, 
         collect_results_from_processes(concurrent, scores, words)
 
         # Clean up the child processes
-        if not _shutdown_requested and concurrent.is_child_abnormal_exit():
+        if not _SHUTDOWN_REQUESTED and concurrent.is_child_abnormal_exit():
             logging.debug('Child process error.')
             concurrent.clean_up_dirty(2)
         concurrent.join_processes()

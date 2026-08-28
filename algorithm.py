@@ -9,7 +9,10 @@ guesses, including average, median, and worst-case scoring strategies.
 """
 
 from __future__ import annotations
-import logging              # logging
+from typing import List
+
+# The scoring modules intentionally form a small import cycle through Config.
+# pylint: disable=cyclic-import
 
 from mytypes import WordSet            # My type hints
 from config  import Config             # We need this for a configurable constant
@@ -74,8 +77,6 @@ def accurate_avg(words: WordSet, guess: str, limit: float | None = None) -> floa
     # that cannot be the correct answer
     return accum_score / len(words)  + (0 if guess in words else 0.1)
 
-from typing import List
-
 def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
@@ -105,7 +106,7 @@ def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> f
             # Short circuit if the score is too high already
             if accum_score > accum_limit:
                 return _max_word_score()
-    
+
     # Calculate the median of remaining counts
     if not remaining_counts:
         return 0.0
@@ -115,7 +116,7 @@ def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> f
         median = (remaining_counts[mid - 1] + remaining_counts[mid]) / 2
     else:
         median = remaining_counts[mid]
-    
+
     # Return the median number of resulting words, with a bias against words
     # that cannot be the correct answer
     return median + (0 if guess in words else 0.1)
@@ -147,8 +148,7 @@ def accurate_max(words: WordSet, guess: str, limit: float | None = None) -> floa
         if this_score > actual_limit:
             return _max_word_score()
         # Find the maximum
-        if this_score > max_score:
-            max_score = this_score
+        max_score = max(max_score, this_score)
 
     # Return the max number of resulting words, with a bias against words
     # that cannot be the correct answer

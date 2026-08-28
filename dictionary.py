@@ -8,6 +8,9 @@ This module reads dictionary files, derives legal guess and answer sets, and
 applies project-specific exclusions.
 """
 
+# The filtering signature is retained for compatibility with existing callers.
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-boolean-expressions,unused-argument
+
 import re                         # regex used for building the dict
 import logging                    # logging
 import sys                        # exit
@@ -38,7 +41,7 @@ def load_word_set_from_file(filename: str) -> WordSet:
     return words
 
 def extra_answers() -> WordSet:
-    """ Return some legit words that are not in the standard Ubuntu linux American word list"""
+    """Return legitimate words absent from the Ubuntu American word list."""
     return load_word_set_from_file('extra_answers.txt')
 
 def rare_non_answers() -> WordSet:
@@ -72,7 +75,8 @@ def load_words_from_file(filename: str, word_length: int) -> tuple[WordSet, Word
         word_length (int): The length of words to consider.
 
     Returns:
-        tuple[WordSet, WordSet, WordSet]: Sets of words of length `word_length`, `word_length - 1`, and `word_length - 2`.
+        tuple[WordSet, WordSet, WordSet]: Sets of words of lengths
+        `word_length`, `word_length - 1`, and `word_length - 2`.
     """
     legal_guesses: WordSet = set()
     one_char_less: WordSet = set()

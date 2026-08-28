@@ -9,6 +9,9 @@ This module initializes logging, parses command-line arguments, and starts the
 main game loop.
 """
 
+# The GUI is optional and must not be imported for CLI-only environments.
+# pylint: disable=import-outside-toplevel
+
 import logging
 
 from argument_parser import parse_command_line

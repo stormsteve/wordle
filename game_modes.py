@@ -8,6 +8,9 @@ This module provides the mode classes that customize guess display, input
 handling, and clue collection.
 """
 
+# Mode implementations import UI/configuration helpers lazily to avoid cycles.
+# pylint: disable=import-outside-toplevel
+
 from mytypes import WordSet, LetterList
 from logic import Logic
 from algorithm import accurate

@@ -8,6 +8,10 @@ This module contains the CLI-oriented prompting, clue entry, and board display
 helpers used outside the GUI.
 """
 
+# Keep configuration and exit imports local so interface helpers stay light and
+# do not introduce an import cycle.
+# pylint: disable=import-outside-toplevel,wrong-import-order,line-too-long
+
 from mytypes import WordSet, LetterList
 from clue_list import get_clue_list
 from colorama import Back, Style
@@ -43,10 +47,9 @@ def validate_guess_input(guess: str, dictionary: WordSet, logger, last_guess: st
          logger.getEffectiveLevel() == 10 or  # logging.DEBUG
          last_guess == guess):
         return True, last_guess
-    else:
-        import logging
-        logging.error('%s is not a valid word. Repeat it to force acceptance.', guess)
-        return False, guess
+    import logging
+    logging.error('%s is not a valid word. Repeat it to force acceptance.', guess)
+    return False, guess
 
 
 def input_guess(dictionary: WordSet) -> str:

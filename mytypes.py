@@ -4,7 +4,7 @@
 """
 Shared type aliases used across the Wordle solver modules.
 """
-from typing import Set, List, Union
+from typing import Set, List
 
 WordSet    = Set[str]     # Define a type WordSet
 LetterSet  = Set[str]     # Define a type LetterSet

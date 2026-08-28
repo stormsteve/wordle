@@ -28,7 +28,7 @@ from clues  import Clues               # Clues gathered so far
 from clue_list import get_clue_list    # To generate a clue list
 from second_guess import SecondGuessCache # Optimize 2nd guess
 from dictionary import build_dictionaries
-from algorithm import accurate_max, accurate_median, accurate_avg
+from algorithm import accurate_avg
 from best_guess import best_guess
 
 config = Config()
@@ -61,8 +61,8 @@ first_guess_words = {
     'aline', 'siren', 'alter', 'stain', 'stone', 'renal', 'aisle', 'score',
     'tries', 'later', 'torsi', 'tenor', 'liner', 'snarl', 'solar', 'laden',
     'tread', 'trend', 'snide', 'risen', 'snail', 'arson', 'canoe', 'steal',
-    'snarl', 'renal', 'aster', 'astir', 'stein', 'rosin', 'oaten', 'aisle',
-    'laser', 'arson', 'triad', 'torsi', 'cadet', 'snide', 'noise', 'inset',
+    'aster', 'astir', 'stein', 'rosin', 'oaten',
+    'laser', 'triad', 'cadet', 'noise', 'inset',
     'actor', 'stern', 'recta', 'stand', 'islet', 'inlet', 'resin', 'inert',
     'sedan', 'adorn', 'crisp', 'onset', 'anise', 'tidal', 'staid', 'olden',
     'ratio', 'intel', 'radio', 'enrol', 'louse', 'older', 'stead', 'ascot',
