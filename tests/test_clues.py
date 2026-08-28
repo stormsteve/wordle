@@ -33,6 +33,18 @@ def test_clues_track_duplicate_letter_bounds():
     assert not clues.is_possible_word("salsa")
 
 
+def test_clues_keep_answers_valid_after_multiple_duplicate_letter_clues():
+    answers = ["allee", "apple", "eerie", "refer", "sassy", "civic", "array"]
+    guesses = ["allee", "eerie", "sassy", "civic", "array", "refer"]
+
+    for answer in answers:
+        clues = Clues()
+        for guess in guesses[:2]:
+            clues.add_clue(guess, get_clue_list(guess, answer))
+
+        assert clues.is_possible_word(answer), (answer, repr(clues))
+
+
 def test_filter_words_len_returns_max_score_after_limit():
     clues = Clues()
     words = {"cigar", "rebut", "sissy"}

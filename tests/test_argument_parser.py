@@ -5,6 +5,8 @@
 
 from argparse import Namespace
 
+import pytest
+
 from algorithm import accurate_avg, accurate_max, accurate_median
 from argument_parser import set_configuration_from_args, setup_argument_parser
 from config import Config
@@ -51,6 +53,43 @@ def test_set_configuration_from_args_selects_average_algorithm_and_enables_cache
     assert config.get_word_list_dictionary() == "custom.txt"
     assert config.get_algorithm() is accurate_avg
     assert config.get_use_cache() is True
+
+
+def test_set_configuration_from_args_normalizes_word_arguments():
+    config = Config()
+
+    set_configuration_from_args(
+        Namespace(
+            max=6,
+            length=5,
+            mode="auto",
+            start="  CrAnE ",
+            answer=" PlAnEt ",
+            processes=0,
+            dictionary="words.txt",
+            rate_alg=1,
+            cache=None,
+        )
+    )
+
+    assert config.get_start() == "crane"
+    assert config.get_answer() == "planet"
+
+
+@pytest.mark.parametrize("option", ["--max", "--processes"])
+def test_parser_rejects_negative_limits(option):
+    parser = setup_argument_parser("words.txt", 3, {"error": 40, "debug": 10})
+
+    with pytest.raises(SystemExit):
+        parser.parse_args([option, "-1"])
+
+
+def test_parser_allows_zero_processes_but_not_zero_guesses():
+    parser = setup_argument_parser("words.txt", 3, {"error": 40, "debug": 10})
+
+    assert parser.parse_args(["--processes", "0"]).processes == 0
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--max", "0"])
 
 
 def test_set_configuration_from_args_selects_median_algorithm_and_disables_cache_by_default():

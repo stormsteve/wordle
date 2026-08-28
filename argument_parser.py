@@ -10,6 +10,22 @@ import pathlib
 from config import Config
 
 
+def _positive_int(value: str) -> int:
+    """Parse an integer that must be at least one."""
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError('must be at least 1')
+    return parsed
+
+
+def _non_negative_int(value: str) -> int:
+    """Parse an integer that may be zero but not negative."""
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError('must be zero or greater')
+    return parsed
+
+
 def setup_argument_parser(word_list_dictionary: str, max_children: int, logging_levels: dict[str, int]) -> argparse.ArgumentParser:
     """
     Set up and return the argument parser with all command line options.
@@ -32,13 +48,13 @@ def setup_argument_parser(word_list_dictionary: str, max_children: int, logging_
     parser.add_argument('--length', '-w', choices=list(range(1, 20)), default=5,  # Assuming max 19
                         type=int, help='sets the word length (default=5)')
     parser.add_argument('--max', '-x', help='sets the maximum number of guesses (default=6)',
-                        default=6, type=int)
+                        default=6, type=_positive_int)
     parser.add_argument('--rate-alg', '-r',
                         help='use rating algorithm for scoring guesses. 1=avg, 2=med, 3=max_max',
                         default=1, type=int, choices=[1,2,3])
     parser.add_argument('--processes', '-p',
                         help=f'number of child processes (default={max_children})',
-                        default=max_children, type=int)
+                        default=max_children, type=_non_negative_int)
     parser.add_argument('--no-cache', '-c', dest='cache',
                         help='don\'t use a cache file for second guess performance',
                         default=None, action='store_true')
@@ -56,8 +72,8 @@ def set_configuration_from_args(args) -> None:
     config.set_max_guesses(args.max)
     config.set_word_length(args.length)
     config.set_mode(args.mode)
-    config.set_start(args.start)
-    config.set_answer(args.answer)
+    config.set_start(args.start.strip().lower())
+    config.set_answer(args.answer.strip().lower() if args.answer else None)
     config.set_max_child_processes(args.processes)
     config.set_word_list_dictionary(args.dictionary)
 
