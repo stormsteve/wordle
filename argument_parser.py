@@ -120,6 +120,7 @@ def setup_logging_from_args(args, logging_levels: dict[str, int]) -> None:
         'Options: max_child_processes=%d dictionary=%s algorithm=%s',
         config.get_max_child_processes(), config.get_word_list_dictionary(),
         config.get_algorithm().__name__)
+    logging.debug('Options: cache_dir=%s', config.get_cache_dir())
 
 
 def parse_command_line() -> argparse.Namespace:

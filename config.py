@@ -194,6 +194,10 @@ class Config: # pylint: disable=too-many-instance-attributes,too-many-public-met
         """Get the complete path to the cache file."""
         return str(pathlib.Path(self._cache_dir) / self._cache_file_name)
 
+    def get_cache_dir(self) -> str:
+        """Get the directory containing the cache file."""
+        return self._cache_dir
+
     def get_algorithm(self) -> Callable[[WordSet, str, float], float]:
         """Get the scoring algorithm."""
         if not self._default_function_initialized:
