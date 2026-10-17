@@ -67,9 +67,7 @@ class WordleGUI:
         self.max_guesses = self.config.get_max_guesses()
         self.configured_answer = (self.config.get_answer() or '').strip().lower()
         self.legal_guesses, self.legal_answers = build_dictionaries()
-        if self._has_known_answer():
-            self.legal_answers = self.legal_answers.copy()
-            self.legal_answers.add(self.configured_answer)
+        self._include_configured_answer()
 
         self.side_panel_width = max(340, 220 + (self.word_length * 22))
         self.side_panel_wrap = self.side_panel_width - 50
@@ -907,6 +905,14 @@ class WordleGUI:
 
     def _has_known_answer(self) -> bool:
         return bool(self.configured_answer and len(self.configured_answer) == self.word_length)
+
+    def _include_configured_answer(self) -> None:
+        """Allow a configured custom answer as both a candidate and a playable guess."""
+        if not self._has_known_answer():
+            return
+        self.legal_answers = self.legal_answers.copy()
+        self.legal_answers.add(self.configured_answer)
+        self.legal_guesses.add(self.configured_answer)
 
     def _solver_can_compute_clue(self) -> bool:
         return self._has_known_answer()

@@ -87,6 +87,19 @@ def make_gui_shell() -> wordle_gui.WordleGUI:
     return gui
 
 
+def test_configured_custom_answer_is_a_valid_gui_guess():
+    gui = make_gui_shell()
+    gui.word_length = 5
+    gui.configured_answer = 'zzzzz'
+    gui.legal_guesses = {'crane'}
+    gui.legal_answers = {'crane'}
+
+    gui._include_configured_answer()
+
+    assert 'zzzzz' in gui.legal_answers
+    assert gui._validate_guess('zzzzz') == ''
+
+
 def test_stale_recommendations_do_not_overwrite_newer_play_result():
     gui = make_gui_shell()
 
