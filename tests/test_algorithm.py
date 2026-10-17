@@ -35,6 +35,14 @@ def test_accurate_max_biases_non_answers_and_handles_single_answer_case():
     assert math.isclose(algorithm.accurate_max({"crane"}, "slate"), 1.1)
 
 
+def test_accurate_median_keeps_guess_at_cutoff_despite_large_average():
+    words = {"being", "broom", "cameo", "dairy", "forge", "krill",
+             "march", "proxy", "razor", "spool", "villa", "wield"}
+
+    assert algorithm.accurate_median(words, "being") == 2.0
+    assert algorithm.accurate_median(words, "being", limit=2.0) == 2.0
+
+
 def test_accurate_algorithms_short_circuit_when_limit_is_exceeded():
     words = {"crane", "slate"}
     max_score = Config().get_max_word_score()

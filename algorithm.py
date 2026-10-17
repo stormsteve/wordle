@@ -86,7 +86,7 @@ def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> f
     Args:
         words (WordSet): The current set of possible answers.
         guess (str): The guess word to evaluate.
-        limit (float): Early termination limit for performance.
+        limit (float): Maximum acceptable score, checked after computing the median.
     Returns:
         float: The median number of remaining words after the guess.
     """
@@ -94,18 +94,12 @@ def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> f
     if len(words) == 0:
         return actual_limit
     remaining_counts: List[int] = []
-    accum_score = 0
-    accum_limit = actual_limit * len(words)
     for w in words:
         if w != guess:  # Don't take into account the one that will exactly match
             temp_clue = Clues()
             temp_clue.add_clue(guess, get_clue_list(guess, w))
             count = temp_clue.filter_words_len(words)
             remaining_counts.append(count)
-            accum_score += count
-            # Short circuit if the score is too high already
-            if accum_score > accum_limit:
-                return _max_word_score()
 
     # Calculate the median of remaining counts
     if not remaining_counts:
@@ -119,7 +113,9 @@ def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> f
 
     # Return the median number of resulting words, with a bias against words
     # that cannot be the correct answer
-    return median + (0 if guess in words else 0.1)
+    # A partial sum cannot bound the median, so apply the cutoff only now.
+    score = median + (0 if guess in words else 0.1)
+    return _max_word_score() if score > actual_limit else score
 
 def accurate_max(words: WordSet, guess: str, limit: float | None = None) -> float:
     """
