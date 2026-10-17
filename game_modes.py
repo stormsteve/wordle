@@ -63,7 +63,8 @@ class ModeAdvise(Mode):
         config = Config()
         start = config.get_start()
         user_guess = (start
-                      if len(start) == config.get_word_length() and clues.get_num_guesses() == 0
+                      if (start != 'list' and len(start) == config.get_word_length()
+                          and clues.get_num_guesses() == 0)
                       else input_guess(dictionary))
         score = accurate(words, user_guess, config.get_max_word_score())
         logic.update('user input', score, words)

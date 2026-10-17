@@ -95,6 +95,25 @@ def test_mode_advise_uses_prompt_after_first_turn(monkeypatch):
     assert logic.get_score() == 1.0
 
 
+def test_mode_advise_prompts_for_non_five_letter_list_start(monkeypatch):
+    config = Config()
+    config.set_start("list")
+    config.set_word_length(4)
+
+    monkeypatch.setattr(game_modes, "input_guess", lambda dictionary: "word", raising=False)
+    monkeypatch.setattr(game_modes, "accurate", lambda words, guess, limit: 1.0, raising=False)
+
+    class FakeClues:
+        @staticmethod
+        def get_num_guesses():
+            return 0
+
+    result = game_modes.ModeAdvise.get_user_guess(
+        {"word"}, "list", {"word"}, FakeClues(), Logic())
+
+    assert result == "word"
+
+
 def test_mode_play_delegates_to_mode_advise(monkeypatch):
     monkeypatch.setattr(
         game_modes.ModeAdvise,
