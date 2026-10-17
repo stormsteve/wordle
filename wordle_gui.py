@@ -217,6 +217,10 @@ class WordleGUI:
             kind, token, guess, logic_text = item
             if kind == 'play':
                 self._apply_play_recommendation(token, guess, logic_text)
+            elif kind == 'play_error':
+                self._apply_recommendation_error('play', token, guess)
+            elif kind == 'solve_error':
+                self._apply_recommendation_error('solve', token, guess)
             else:
                 self._apply_solver_recommendation(token, guess, logic_text)
         self.root.after(50, self._poll_recommendation_queue)
@@ -780,6 +784,9 @@ class WordleGUI:
                 guess, logic = best_guess(self.legal_guesses, remaining, clues, self.legal_answers)
                 if not self.is_closing:
                     self.recommendation_queue.put(('play', token, guess, str(logic)))
+            except Exception as error:  # pylint: disable=broad-exception-caught
+                if not self.is_closing:
+                    self.recommendation_queue.put(('play_error', token, str(error), ''))
             finally:
                 self.play_recommend_running = False
                 if self.play_recommend_pending and not self.is_closing:
@@ -824,6 +831,9 @@ class WordleGUI:
                 guess, logic = best_guess(self.legal_guesses, remaining, clues, self.legal_answers)
                 if not self.is_closing:
                     self.recommendation_queue.put(('solve', token, guess, str(logic)))
+            except Exception as error:  # pylint: disable=broad-exception-caught
+                if not self.is_closing:
+                    self.recommendation_queue.put(('solve_error', token, str(error), ''))
             finally:
                 self.solve_recommend_running = False
                 if self.solve_recommend_pending and not self.is_closing:
@@ -842,6 +852,21 @@ class WordleGUI:
         if next_row < self.max_guesses:
             self._set_cell_word(self.solve_cells, next_row, guess)
             self.solve_guess_var.set(guess)
+
+    def _apply_recommendation_error(self, kind: str, token: int, error: str) -> None:
+        """Show a current recommendation failure in the matching tab."""
+        if self.is_closing:
+            return
+        if kind == 'play':
+            if self.play_game_over or token != self.play_recommend_token:
+                return
+            self.play_status_var.set(f'Recommendation failed: {error}')
+            self.play_recommendation_var.set('Recommendation unavailable.')
+            return
+        if token != self.solve_recommend_token:
+            return
+        self.solve_status_var.set(f'Recommendation failed: {error}')
+        self.solve_recommendation_var.set('Recommendation unavailable.')
 
     def _get_configured_start_guess(self) -> str:
         start = (self.config.get_start() or '').strip().lower()

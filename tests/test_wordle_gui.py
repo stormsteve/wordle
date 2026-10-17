@@ -121,6 +121,47 @@ def test_poll_recommendation_queue_ignores_results_while_closing():
     assert gui.root.scheduled == []
 
 
+@pytest.mark.parametrize('kind', ['play', 'solve'])
+def test_recommendation_worker_error_is_reported_in_gui(monkeypatch, kind):
+    gui = make_gui_shell()
+    gui.word_length = 5
+    gui.max_guesses = 6
+    gui.play_recommend_running = False
+    gui.solve_recommend_running = False
+    gui.play_recommend_pending = False
+    gui.solve_recommend_pending = False
+    gui._get_initial_guess = lambda _row: ''
+    gui.legal_guesses = {'crane', 'slate'}
+    gui.legal_answers = {'crane', 'slate'}
+    gui.play_status_var = FakeVariable()
+    gui.solve_status_var = FakeVariable()
+    gui.play_remaining = {'crane', 'slate'}
+    gui.solve_remaining = {'crane', 'slate'}
+    gui.play_clues = Clues()
+    gui.solve_clues = Clues()
+    gui.play_clues.add_clue('crane', list('bbbbb'))
+    gui.solve_clues.add_clue('crane', list('bbbbb'))
+
+    def fail_recommendation(*_args):
+        raise RuntimeError('test scoring error')
+
+    monkeypatch.setattr(wordle_gui, 'best_guess', fail_recommendation)
+
+    if kind == 'play':
+        gui._recommend_play_guess()
+    else:
+        gui._recommend_solver_guess()
+
+    workers = list(gui.active_recommendation_threads)
+    for worker in workers:
+        worker.join()
+    gui._poll_recommendation_queue()
+
+    assert getattr(gui, f'{kind}_recommendation_var').value == 'Recommendation unavailable.'
+    assert getattr(gui, f'{kind}_status_var').value == 'Recommendation failed: test scoring error'
+    assert not getattr(gui, f'{kind}_recommend_running')
+
+
 def test_active_recommendations_are_removed_after_they_finish():
     gui = make_gui_shell()
     finished = FakeWorker(alive=False)
