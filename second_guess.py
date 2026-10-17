@@ -12,6 +12,7 @@ import logging                    # logging
 import pathlib                    # cache file timestamp
 import json                       # serializing the cache
 import hashlib
+import tempfile
 from typing import Any, Optional  # typehinting with Any and Optional
 
 from mytypes import WordSet       # My type hints
@@ -89,12 +90,10 @@ class SecondGuessCache ():
         # check if cache is stale
         try:
             cache_stamp = pathlib.Path(cache_file_name).stat().st_mtime
-        except: # pylint: disable=bare-except
-            # Ignore error and set timestamp to be the currect time
-            cache_stamp = datetime.datetime.now().timestamp()
+        except OSError:
+            return
 
         if cache_stamp > self._cache_stamp:
-            self._cache_stamp = cache_stamp
             # Deserialize (load) from a file
             logging.debug(
                 'Loading cache file %s timestamp %s',
@@ -117,6 +116,7 @@ class SecondGuessCache ():
                     for k, i in cache_json['entries'].items()
                     if not dont_load or k.split(';')[0] not in dont_load
                 })
+                self._cache_stamp = cache_stamp
 
                 logging.debug('Cache has %d entries', len(self._cache))
             except Exception as e: # pylint: disable=broad-exception-caught
@@ -133,14 +133,23 @@ class SecondGuessCache ():
             sort_keys = True).replace('},', '},\n')
 
     def serialize(self) -> None:
-        """Serialize the cache and write it to a file."""
+        """Publish a complete cache file atomically, preserving pending writes on failure."""
         if self._dirty:
-            self._dirty = False
             cache_file = pathlib.Path(Config().get_cache_file_name())
             cache_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(cache_file, 'w', encoding='UTF-8') as f:
-                f.write(self.to_json())
-                f.write('\n')
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                        mode='w', encoding='UTF-8', dir=cache_file.parent,
+                        prefix=f'.{cache_file.name}.', suffix='.tmp', delete=False) as f:
+                    temporary = pathlib.Path(f.name)
+                    f.write(self.to_json())
+                    f.write('\n')
+                temporary.replace(cache_file)
+                self._dirty = False
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
 
     @staticmethod
     def key(clues:Clues) -> str:
