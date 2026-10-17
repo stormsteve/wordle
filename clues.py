@@ -111,7 +111,7 @@ class RequiredLetters ():
         self._letter_map[letter] = (cur_min, num_letter)
 
 
-class Clues ():
+class Clues (): # pylint: disable=too-many-instance-attributes
     """
     Accumulate clue state across guesses and filter candidate answers.
 
@@ -128,9 +128,11 @@ class Clues ():
         self._guesses: LetterList = []  # Guess history in play order.
         self._last_clue: LetterList = []  # Most recent clue pattern.
         self._clue_history: list[LetterList] = []
+        self._consistent = True
 
     def __repr__(self) -> str:
         return (f'{self._greens=} {self._yellows=} {self._blacks=} {self._required=} '
+                f'{self._consistent=} '
                 f'{self._guesses=} {self._last_clue=}')
 
     def get_guesses(self) -> LetterList:
@@ -161,6 +163,9 @@ class Clues ():
         Returns:
             bool: True if the word is a possible solution, False otherwise.
         """
+
+        if not self._consistent:
+            return False
 
         # Initialize a dictionary to store the count of each letter in the word
         word_letter_counts: dict[str, int] = {}
@@ -204,6 +209,9 @@ class Clues ():
         Returns:
             bool: True if the word is a possible solution, False otherwise.
         """
+
+        if not self._consistent:
+            return False
 
         # Filter out all words that contain black letters
         for letter in word:
@@ -266,7 +274,10 @@ class Clues ():
         """
         for i, letter in enumerate(guess_list):
             if clue_list[i] == 'g':
-                self._greens[i] = letter
+                if self._greens[i] and self._greens[i] != letter:
+                    self._consistent = False
+                else:
+                    self._greens[i] = letter
 
     def _add_clue_yellow_black(self,guess_list:LetterList, clue_list:LetterList) -> list[LetterSet]:
         """Find the yellows and blacks."""

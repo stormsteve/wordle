@@ -34,6 +34,15 @@ def test_clues_track_duplicate_letter_bounds():
     assert not clues.is_possible_word("salsa")
 
 
+def test_conflicting_green_clues_make_all_candidates_impossible():
+    clues = Clues()
+    clues.add_clue('crane', list('gbbbb'))
+    clues.add_clue('sloth', list('gbbbb'))
+
+    assert not clues.is_possible_word('sissy')
+    assert clues.filter_words({'sissy', 'civic'}) == set()
+
+
 @pytest.mark.parametrize('guess,answer,candidate', [
     ('sassy', 'aside', 'abuse'),
     ('allee', 'apple', 'axlxe'),
