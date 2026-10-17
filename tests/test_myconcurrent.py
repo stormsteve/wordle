@@ -6,9 +6,13 @@
 from __future__ import annotations
 
 import myconcurrent
+import multiprocessing
+import pytest
+from config import Config
+from algorithm import accurate_median
 
 
-def test_launch_child_passes_only_queues_to_child(monkeypatch):
+def test_launch_child_passes_pickle_safe_settings_to_child(monkeypatch):
     """Worker args must stay pickle-safe for forkserver/spawn start methods."""
     started_processes = []
 
@@ -35,8 +39,45 @@ def test_launch_child_passes_only_queues_to_child(monkeypatch):
             concurrent.get_inqueue(),
             {"basil"},
             3,
+            {
+                'word_length': 5,
+                'algorithm': Config().get_algorithm(),
+                'max_word_score': 9999,
+                'max_cpu_percent': 90,
+            },
         )
         assert concurrent not in process.args
         assert process.started
     finally:
         concurrent.close()
+
+
+@pytest.mark.parametrize('method', ['spawn', 'forkserver'])
+def test_worker_preserves_length_and_scoring_algorithm(monkeypatch, method):
+    if method not in multiprocessing.get_all_start_methods():
+        pytest.skip(f'{method} is unavailable')
+    context = multiprocessing.get_context(method)
+    monkeypatch.setattr(myconcurrent, 'Queue', context.Queue)
+    monkeypatch.setattr(myconcurrent, 'Process', context.Process)
+    Config().set_word_length(6)
+    Config().set_algorithm(accurate_median)
+    concurrent = myconcurrent.Concurrent()
+    try:
+        concurrent.get_outqueue().put('planet')
+        myconcurrent.launch_child(concurrent, {'planet', 'placer'}, 0)
+        worker = concurrent._processes[0]
+        worker.join(10)
+        assert not worker.is_alive()
+        assert worker.exitcode == 0
+        guess, score = concurrent.get_inqueue().get(timeout=2).split(':')
+        assert guess == 'planet'
+        assert float(score) == 1.0
+    finally:
+        for worker in concurrent._processes:
+            if worker.is_alive():
+                worker.terminate()
+            worker.join()
+        concurrent.close()
+        for channel in (concurrent.get_inqueue(), concurrent.get_outqueue()):
+            channel.close()
+            channel.join_thread()

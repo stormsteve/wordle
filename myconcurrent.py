@@ -120,7 +120,8 @@ def get_guess_score(
         outqueue: Queue[str], # pylint: disable=unsubscriptable-object
         inqueue: Queue[str],  # pylint: disable=unsubscriptable-object
         words: WordSet,
-        pid: int) -> bool:
+        pid: int,
+        settings: dict) -> bool:
     """
     Child process function to compute and score guesses.
 
@@ -132,12 +133,15 @@ def get_guess_score(
         inqueue (Queue[str]): Queue for score results.
         words (WordSet): The set of possible answers.
         pid (int): Process ID for load checking.
+        settings (dict): Pickle-safe scoring configuration from the parent process.
 
     Returns:
         bool: True if process completed successfully.
     """
     config = Config()
-    min_score = config.get_max_word_score()
+    config.set_word_length(settings['word_length'])
+    config.set_algorithm(settings['algorithm'])
+    min_score = settings['max_word_score']
     psutil.cpu_percent() # First call always returns 0.0, so ignore the result
     while True:
         try:
@@ -150,7 +154,7 @@ def get_guess_score(
                 # Exit this process if the load is too high, but make sure to leave at least 1
                 # child running. We do the check here so that it doesn't happen too often
                 if pid > 0: # Don't stop process 0 until the in-queue is empty
-                    if psutil.cpu_percent() > config.get_max_cpu_percent():
+                    if psutil.cpu_percent() > settings['max_cpu_percent']:
                         break
         except Empty:
             break
@@ -180,8 +184,16 @@ def launch_child(conc: Concurrent, words: WordSet, pid: int) -> None:
         words (WordSet): The set of possible answers.
         pid (int): Process ID.
     """
+    config = Config()
+    settings = {
+        'word_length': config.get_word_length(),
+        'algorithm': config.get_algorithm(),
+        'max_word_score': config.get_max_word_score(),
+        'max_cpu_percent': config.get_max_cpu_percent(),
+    }
     p = Process(target = get_guess_score,
-                args = (conc.get_outqueue(), conc.get_inqueue(), words, pid))
+                args = (conc.get_outqueue(), conc.get_inqueue(), words, pid,
+                        settings))
     p.start()
     conc.add_process(p)
 

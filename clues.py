@@ -127,6 +127,7 @@ class Clues ():
         self._required = RequiredLetters()  # Min/max required counts for repeated letters.
         self._guesses: LetterList = []  # Guess history in play order.
         self._last_clue: LetterList = []  # Most recent clue pattern.
+        self._clue_history: list[LetterList] = []
 
     def __repr__(self) -> str:
         return (f'{self._greens=} {self._yellows=} {self._blacks=} {self._required=} '
@@ -139,6 +140,10 @@ class Clues ():
     def get_num_guesses(self) -> int:
         """Return the number of guesses"""
         return len(self._guesses)
+
+    def get_clue_history(self) -> list[LetterList]:
+        """Return recorded feedback without exposing mutable history."""
+        return [clue.copy() for clue in self._clue_history]
 
     def get_last(self) -> str:
         """Return the last clue"""
@@ -275,6 +280,7 @@ class Clues ():
                 self._required.add_yellow(letter, guess_list, self._greens, clue_list)
             elif letter != self._greens[i]:
                 if (letter in self._greens or letter in self._required):
+                    new_yellows[i].add(letter)
                     self._required.add_black(letter, guess_list, self._greens, clue_list)
                 else:
                     self._blacks.add(letter)
@@ -284,7 +290,8 @@ class Clues ():
         """Add a new clue to the history of clues"""
 
         self._guesses.append(guess)
-        self._last_clue = clue_list
+        self._last_clue = clue_list.copy()
+        self._clue_history.append(clue_list.copy())
 
         # Limit guess_list to word_length just in case we got a long guess
         guess_list = list(guess[:_word_length()])

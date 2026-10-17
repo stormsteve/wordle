@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import queue
 import threading
+import pytest
+from clues import Clues
 
 import wordle_gui
 
@@ -19,6 +21,9 @@ class FakeVariable:
 
     def set(self, value: str) -> None:
         self.value = value
+
+    def get(self) -> str:
+        return self.value
 
 
 class FakeRoot:
@@ -49,6 +54,7 @@ def make_gui_shell() -> wordle_gui.WordleGUI:
     gui.active_recommendation_threads = set()
     gui.recommendation_thread_lock = threading.Lock()
     gui.is_closing = False
+    gui.play_game_over = False
     gui.play_recommend_token = 2
     gui.solve_recommend_token = 4
     gui.play_recommendation_var = FakeVariable()
@@ -122,3 +128,35 @@ def test_shutdown_waits_for_threads_and_worker_processes(monkeypatch):
 
     assert gui.shutdown_status_var.value == 'Please wait.'
     assert finished == [True]
+
+
+@pytest.mark.parametrize('outcome', ['play_win', 'play_loss', 'solve_win', 'solve_empty'])
+def test_terminal_round_invalidates_outstanding_recommendations(outcome):
+    gui = make_gui_shell()
+    gui.word_length = 5
+    gui.max_guesses = 1
+    gui._validate_guess = lambda guess: ''
+    gui._paint_row = lambda *args: None
+    kind = 'play' if outcome.startswith('play') else 'solve'
+    token = getattr(gui, f'{kind}_recommend_token')
+    setattr(gui, f'{kind}_recommend_pending', True)
+    setattr(gui, f'{kind}_cells', [])
+    setattr(gui, f'{kind}_clues', Clues())
+    setattr(gui, f'{kind}_remaining', {'crane'})
+    setattr(gui, f'{kind}_guess_var', FakeVariable('slate' if outcome == 'play_loss' else 'crane'))
+    setattr(gui, f'{kind}_status_var', FakeVariable())
+    setattr(gui, f'{kind}_remaining_var', FakeVariable())
+    if kind == 'play':
+        gui.play_answer = 'crane'
+        gui._submit_play_guess()
+    else:
+        gui._solver_can_compute_clue = lambda: False
+        gui.solve_clue_var = FakeVariable('bbbbb' if outcome == 'solve_empty' else 'ggggg')
+        gui._submit_solver_round()
+    variable = getattr(gui, f'{kind}_recommendation_var')
+    completed_message = variable.value
+    gui.recommendation_queue.put((kind, token, 'slate', 'outdated'))
+    gui.recommendation_queue.put((f'{kind}_refresh',))
+    gui._poll_recommendation_queue()
+    assert variable.value == completed_message
+    assert not getattr(gui, f'{kind}_recommend_pending')

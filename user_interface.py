@@ -150,5 +150,6 @@ def display_board(clues, ans: str) -> None:
         clues: The clues object.
         ans (str): The answer word.
     """
+    feedback = clues.get_clue_history() if not ans else None
     for i, guess in enumerate(clues.get_guesses()):
-        display_row(i+1, get_clue_list(guess, ans), guess)
+        display_row(i+1, feedback[i] if feedback is not None else get_clue_list(guess, ans), guess)

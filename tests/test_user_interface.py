@@ -9,6 +9,7 @@ import logging
 
 from config import Config
 import user_interface
+from clues import Clues
 
 
 def test_validate_guess_input_rejects_wrong_length(caplog):
@@ -99,3 +100,16 @@ def test_display_board_renders_each_guess(monkeypatch):
         (1, ["g", "g", "g", "g", "g"], "crane", ""),
         (2, ["b", "b", "g", "b", "g"], "slate", ""),
     ]
+
+
+def test_unknown_answer_board_preserves_manual_feedback(monkeypatch):
+    clues = Clues()
+    first = list('bbbbb')
+    clues.add_clue('crane', first)
+    first[0] = 'g'
+    clues.add_clue('slate', list('bybbb'))
+    displayed = []
+    monkeypatch.setattr(user_interface, 'display_row',
+                        lambda row, clue, guess: displayed.append((row, clue, guess)))
+    user_interface.display_board(clues, '')
+    assert displayed == [(1, list('bbbbb'), 'crane'), (2, list('bybbb'), 'slate')]

@@ -12,6 +12,7 @@ Desktop GUI for the Wordle solver and game.
 from __future__ import annotations
 
 import pathlib
+import copy
 import queue
 import threading
 import tkinter as tk
@@ -632,6 +633,8 @@ class WordleGUI:
             return
 
         row_num = self.play_clues.get_num_guesses()
+        self.play_recommend_token += 1
+        self.play_recommend_pending = False
         clue = get_clue_list(guess, self.play_answer)
         self.play_clues.add_clue(guess, clue)
         self.play_remaining = self.play_clues.filter_words(self.play_remaining)
@@ -713,6 +716,8 @@ class WordleGUI:
                 return
             clue_list = list(clue)
 
+        self.solve_recommend_token += 1
+        self.solve_recommend_pending = False
         self.solve_clues.add_clue(guess, clue_list)
         self.solve_remaining = self.solve_clues.filter_words(self.solve_remaining)
         self._paint_row(self.solve_cells, row_num, guess, clue_list)
@@ -749,6 +754,8 @@ class WordleGUI:
         return ''
 
     def _recommend_play_guess(self) -> None:
+        if self.is_closing or self.play_game_over:
+            return
         if self.play_recommend_running:
             self.play_recommend_pending = True
             self.play_recommend_token += 1
@@ -766,7 +773,7 @@ class WordleGUI:
             return
         self.play_recommendation_var.set('Computing recommendation...')
         remaining = self.play_remaining.copy()
-        clues = self.play_clues
+        clues = copy.deepcopy(self.play_clues)
 
         def worker() -> None:
             try:
@@ -784,11 +791,15 @@ class WordleGUI:
         thread.start()
 
     def _apply_play_recommendation(self, token: int, guess: str, logic_text: str) -> None:
-        if token != self.play_recommend_token:
+        if self.is_closing or self.play_game_over or token != self.play_recommend_token:
             return
         self.play_recommendation_var.set(f'{guess.upper()}\n{logic_text}')
 
     def _recommend_solver_guess(self) -> None:
+        if (self.is_closing or not self.solve_remaining
+                or self.solve_clues.get_last() == 'g' * self.word_length
+                or self.solve_clues.get_num_guesses() >= self.max_guesses):
+            return
         if self.solve_recommend_running:
             self.solve_recommend_pending = True
             self.solve_recommend_token += 1
@@ -806,7 +817,7 @@ class WordleGUI:
             return
         self.solve_recommendation_var.set('Computing recommendation...')
         remaining = self.solve_remaining.copy()
-        clues = self.solve_clues
+        clues = copy.deepcopy(self.solve_clues)
 
         def worker() -> None:
             try:
@@ -824,7 +835,7 @@ class WordleGUI:
         thread.start()
 
     def _apply_solver_recommendation(self, token: int, guess: str, logic_text: str) -> None:
-        if token != self.solve_recommend_token:
+        if self.is_closing or token != self.solve_recommend_token:
             return
         self.solve_recommendation_var.set(f'{guess.upper()}\n{logic_text}')
         next_row = self.solve_clues.get_num_guesses()

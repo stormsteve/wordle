@@ -5,6 +5,9 @@
 
 from __future__ import annotations
 
+import logging
+import pytest
+
 from logic import Logic
 from config import Config
 import game_logic
@@ -154,7 +157,7 @@ def test_execute_game_rounds_uses_best_guess_and_shows_answer_on_failure(monkeyp
     assert "The answer is: CRANE" in output
 
 
-def test_game_loop_displays_board_with_final_guess_when_answer_is_unknown(monkeypatch):
+def test_game_loop_does_not_treat_final_guess_as_unknown_answer(monkeypatch):
     displayed = []
 
     monkeypatch.setattr(
@@ -180,4 +183,14 @@ def test_game_loop_displays_board_with_final_guess_when_answer_is_unknown(monkey
     game_logic.game_loop()
 
     assert len(displayed) == 1
-    assert displayed[0][1] == "crane"
+    assert displayed[0][1] == ""
+
+
+@pytest.mark.parametrize('start', ['toolong', 'cat'])
+@pytest.mark.parametrize('level', [logging.ERROR, logging.DEBUG])
+def test_wrong_length_start_is_rejected_even_in_debug(start, level):
+    logger = logging.getLogger('starting-word')
+    logger.setLevel(level)
+    with pytest.raises(SystemExit) as error:
+        game_logic.setup_initial_guess(start, 5, {'crane'}, {'crane'}, logger)
+    assert error.value.code == 1

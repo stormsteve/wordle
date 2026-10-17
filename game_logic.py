@@ -66,6 +66,11 @@ def setup_initial_guess(
     config = Config()
     guess = ''
     logic = Logic()
+    if start != 'list' and len(start) != word_length:
+        import logging
+        import sys
+        logging.error('Starting word must have %d letters.', word_length)
+        sys.exit(1)
     if start == 'list':
         start_word_list = config.get_first_guess_words() if word_length == 5 else legal_answers
         guess = random_word(start_word_list)
@@ -178,9 +183,9 @@ def game_loop() -> None:
 
     legal_guesses, legal_answers, clues, answer, guess, logic, mode_class = initialize_game()
 
-    final_guess = execute_game_rounds(
+    execute_game_rounds(
         legal_guesses, legal_answers, clues, answer, guess, logic, mode_class)
 
     # Show the final board
     from user_interface import display_board
-    display_board(clues, answer if answer else final_guess)
+    display_board(clues, answer)
