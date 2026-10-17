@@ -144,7 +144,7 @@ def test_execute_game_rounds_uses_best_guess_and_shows_answer_on_failure(monkeyp
     monkeypatch.setattr(best_guess_module, "best_guess", fake_best_guess)
 
     clue_map = {
-        "slate": ["b", "b", "b", "b", "b"],
+        "slate": ["b", "b", "g", "b", "g"],
         "crane": ["b", "b", "b", "b", "b"],
     }
 
@@ -175,11 +175,41 @@ def test_execute_game_rounds_uses_best_guess_and_shows_answer_on_failure(monkeyp
 
     assert result == "crane"
     assert len(displayed_rows) == 2
-    assert displayed_rows[0][0:3] == (1, ["b", "b", "b", "b", "b"], "slate")
+    assert displayed_rows[0][0:3] == (1, ["b", "b", "g", "b", "g"], "slate")
     assert displayed_rows[1][0:3] == (2, ["b", "b", "b", "b", "b"], "crane")
-    assert best_guess_calls == [({"slate", "crane"}, set(), 1)]
+    assert best_guess_calls == [({"slate", "crane"}, {"crane"}, 1)]
     assert "Better luck next time!" in output
     assert "The answer is: CRANE" in output
+
+
+def test_execute_game_rounds_stops_when_clues_eliminate_all_answers(monkeypatch, caplog):
+    Config().set_word_length(5)
+    Config().set_max_guesses(6)
+    monkeypatch.setattr(
+        user_interface,
+        "display_row",
+        lambda *args: None,
+    )
+
+    class ContradictoryMode:
+        @staticmethod
+        def print_raw_guess(guess, row_num, logic):
+            return logic
+
+        @staticmethod
+        def get_user_guess(legal_guesses, guess, legal_answers, clues, logic):
+            return guess
+
+        @staticmethod
+        def get_clue(guess, answer):
+            return list('ggggy')
+
+    with pytest.raises(SystemExit) as error:
+        game_logic.execute_game_rounds(
+            {'crane'}, {'crane'}, game_logic.Clues(), '', 'crane', Logic(), ContradictoryMode)
+
+    assert error.value.code == 1
+    assert 'No answers match the clues provided.' in caplog.text
 
 
 def test_game_loop_does_not_treat_final_guess_as_unknown_answer(monkeypatch):

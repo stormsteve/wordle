@@ -171,6 +171,11 @@ def execute_game_rounds(
                     print(f'The answer is: {answer.upper()}')
                 return guess
             legal_answers = clues.filter_words(legal_answers)
+            if not legal_answers:
+                import logging
+                import sys
+                logging.error('No answers match the clues provided.')
+                sys.exit(1)
             from best_guess import best_guess
             guess, logic = best_guess(legal_guesses, legal_answers, clues, all_answers)
     return guess
