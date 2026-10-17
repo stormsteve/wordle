@@ -15,7 +15,7 @@ from multiprocessing import Process, Queue
 import queue                           # for queue.Empty
 import time
 import datetime
-import os                              # For terminal width
+import shutil                          # For terminal width with redirected output fallback
 from sys import modules                # For cProfile check
 
 import psutil                          # For CPU information
@@ -184,7 +184,7 @@ def print_scores(score:dict[str, int], count:dict[str, int], max_num: int = 9999
     total_guesses = 0
     total_count = 0
     if max_num == -1:
-        columns, _ = os.get_terminal_size()
+        columns = shutil.get_terminal_size(fallback=(80, 24)).columns
         max_num = max(int((columns - 49) / 11), 0)
     for (s, c) in score.items():
         normalized[s] = int(100 * c / count[s]) / 100 if count[s] else 0
@@ -329,5 +329,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-else:
-    print('Not intended to be an imported module.')
