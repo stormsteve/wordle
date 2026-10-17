@@ -34,6 +34,13 @@ def obtain_answer(legal_answers: WordSet) -> str:
     mode = config.get_mode()
     answer = config.get_answer()
     word_length = config.get_word_length()
+    if answer and len(answer) != word_length:
+        import logging
+        import sys
+        logging.error(
+            'Answer %s has %d letters (expected %d).',
+            answer, len(answer), word_length)
+        sys.exit(1)
     if mode in {'auto', 'play'}:
         if not answer:
             answer = random_word(legal_answers)
@@ -43,16 +50,9 @@ def obtain_answer(legal_answers: WordSet) -> str:
                 logging.info('Chose %s as the answer.', answer.upper())
         elif answer not in legal_answers:
             import logging
-            if len(answer) != word_length:
-                logging.error(
-                    '%s is not in the dictionary and has %d letters (expected %d).',
-                    answer, len(answer), word_length)
-                import sys
-                sys.exit(1)
-            else:
-                logging.error(
-                    '%s is not a recognized word. Treating it as a custom answer.', answer)
-                legal_answers.add(answer)
+            logging.error(
+                '%s is not a recognized word. Treating it as a custom answer.', answer)
+            legal_answers.add(answer)
     return answer
 
 

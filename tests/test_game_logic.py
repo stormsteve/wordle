@@ -15,6 +15,31 @@ import user_interface
 import best_guess as best_guess_module
 
 
+@pytest.mark.parametrize("mode", ["auto", "play", "clues", "advise"])
+@pytest.mark.parametrize("answer", ["cat", "planet"])
+def test_obtain_answer_rejects_wrong_length_in_every_mode(mode, answer, caplog):
+    config = Config()
+    config.set_mode(mode)
+    config.set_word_length(5)
+    config.set_answer(answer)
+
+    with pytest.raises(SystemExit) as error:
+        game_logic.obtain_answer({"crane"})
+
+    assert error.value.code == 1
+    assert "expected 5" in caplog.text
+
+
+@pytest.mark.parametrize("mode", ["clues", "advise"])
+@pytest.mark.parametrize("answer", [None, "", "crane"])
+def test_obtain_answer_preserves_optional_answer_in_manual_modes(mode, answer):
+    config = Config()
+    config.set_mode(mode)
+    config.set_answer(answer)
+
+    assert game_logic.obtain_answer({"crane"}) == answer
+
+
 def test_initialize_game_picks_random_answer_when_needed(monkeypatch):
     config = Config()
     config.set_mode("auto")
