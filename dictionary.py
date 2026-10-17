@@ -20,7 +20,7 @@ from mytypes import WordSet       # My type hints
 from config  import Config        # Wordle Solver Configuration
 
 
-def _resolve_word_file(filename: str) -> str:
+def resolve_word_file(filename: str) -> str:
     """Resolve a word-list path, including files bundled beside this module."""
     path = pathlib.Path(filename)
     if path.exists() or path.is_absolute():
@@ -40,7 +40,7 @@ def load_word_set_from_file(filename: str) -> WordSet:
         WordSet: The set of words.
     """
     words: WordSet = set()
-    filename = _resolve_word_file(filename)
+    filename = resolve_word_file(filename)
     try:
         with open(filename, 'r', encoding='UTF-8') as f:
             for line in f:
@@ -93,7 +93,7 @@ def load_words_from_file(filename: str, word_length: int) -> tuple[WordSet, Word
     legal_guesses: WordSet = set()
     one_char_less: WordSet = set()
     two_chars_less: WordSet = set()
-    filename = _resolve_word_file(filename)
+    filename = resolve_word_file(filename)
 
     try:
         with open(filename, 'r', encoding='UTF-8') as f:

@@ -22,7 +22,7 @@ from best_guess import best_guess
 from clue_list import get_clue_list
 from clues import Clues
 from config import Config
-from dictionary import build_dictionaries
+from dictionary import build_dictionaries, resolve_word_file
 from logic import Logic
 from myconcurrent import num_active_children, random_word
 
@@ -51,7 +51,7 @@ def configure_gui_defaults() -> None:
     if not config.get_start():
         config.set_start('list')
 
-    dictionary_path = pathlib.Path(config.get_word_list_dictionary())
+    dictionary_path = pathlib.Path(resolve_word_file(config.get_word_list_dictionary()))
     if not dictionary_path.exists():
         config.set_word_list_dictionary(config.get_word_list_dictionary2())
 

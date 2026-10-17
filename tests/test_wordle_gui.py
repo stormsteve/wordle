@@ -11,6 +11,31 @@ import pytest
 from clues import Clues
 
 import wordle_gui
+import dictionary
+from config import Config
+
+
+@pytest.mark.parametrize('location', ['bundled', 'working', 'missing'])
+def test_gui_dictionary_resolution_outside_repository(monkeypatch, tmp_path, location):
+    bundled = tmp_path / 'bundled'
+    working = tmp_path / 'working'
+    bundled.mkdir()
+    working.mkdir()
+    monkeypatch.setattr(dictionary, '__file__', str(bundled / 'dictionary.py'))
+    monkeypatch.chdir(working)
+    config = Config()
+    config.set_word_list_dictionary('words.txt')
+    fallback = tmp_path / 'fallback.txt'
+    fallback.write_text('slate\n', encoding='utf-8')
+    config.set_word_list_dictionary2(str(fallback))
+    if location != 'missing':
+        directory = bundled if location == 'bundled' else working
+        (directory / 'words.txt').write_text('crane\n', encoding='utf-8')
+
+    wordle_gui.configure_gui_defaults()
+
+    expected = {'slate'} if location == 'missing' else {'crane'}
+    assert dictionary.load_word_set_from_file(config.get_word_list_dictionary()) == expected
 
 
 class FakeVariable:
