@@ -78,11 +78,15 @@ class Concurrent:
 
     def clean_up_dirty(self, exit_code:int) -> None:
         """Clean up child processes and queues and then exit"""
+        self.terminate_children()
+        self.close()
+        exit(exit_code)
+
+    def terminate_children(self) -> None:
+        """Stop worker processes and prevent queue feeder threads from blocking."""
         self._inqueue.cancel_join_thread()
         self._outqueue.cancel_join_thread()
         self.kill_children()
-        self.close()
-        exit(exit_code)
 
     def close(self) -> None:
         """Unregister this instance from the active concurrent registry."""
@@ -302,7 +306,8 @@ def process_parallel_guesses(all_guesses: WordSet, words: WordSet) -> dict[str, 
         # Clean up the child processes
         if not _SHUTDOWN_REQUESTED and concurrent.is_child_abnormal_exit():
             logging.debug('Child process error.')
-            concurrent.clean_up_dirty(2)
+            concurrent.terminate_children()
+            raise RuntimeError('A scoring worker exited unexpectedly.')
         concurrent.join_processes()
     finally:
         concurrent.close()

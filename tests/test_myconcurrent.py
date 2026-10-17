@@ -81,3 +81,41 @@ def test_worker_preserves_length_and_scoring_algorithm(monkeypatch, method):
         for channel in (concurrent.get_inqueue(), concurrent.get_outqueue()):
             channel.close()
             channel.join_thread()
+
+
+def test_abnormal_worker_exit_raises_error_after_cleanup(monkeypatch):
+    class AbnormalConcurrent:
+        def __init__(self):
+            self.terminated = False
+            self.closed = False
+
+        def get_outqueue(self):
+            return object()
+
+        def get_inqueue(self):
+            return object()
+
+        def get_num_alive(self):
+            return 0
+
+        def is_child_abnormal_exit(self):
+            return True
+
+        def terminate_children(self):
+            self.terminated = True
+
+        def close(self):
+            self.closed = True
+
+    concurrent = AbnormalConcurrent()
+    monkeypatch.setattr(myconcurrent, 'Concurrent', lambda: concurrent)
+    monkeypatch.setattr(myconcurrent, 'fill_queue', lambda *_args: None)
+    monkeypatch.setattr(myconcurrent, 'launch_children', lambda *_args: None)
+    monkeypatch.setattr(myconcurrent, 'collect_results_from_processes', lambda *_args: None)
+    monkeypatch.setattr(myconcurrent, '_SHUTDOWN_REQUESTED', False)
+
+    with pytest.raises(RuntimeError, match='scoring worker exited unexpectedly'):
+        myconcurrent.process_parallel_guesses({'crane'}, {'crane', 'slate'})
+
+    assert concurrent.terminated
+    assert concurrent.closed
