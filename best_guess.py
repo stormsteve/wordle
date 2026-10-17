@@ -69,7 +69,9 @@ def log_solution_space(words: WordSet) -> None:
         logging.debug('words=%s', words)
 
 
-def get_cached_guess(clues, words: WordSet):
+def get_cached_guess(
+        clues, words: WordSet, dictionary: WordSet | None = None,
+        answers: WordSet | None = None):
     """
     Attempt to retrieve a cached guess for the second guess optimization.
 
@@ -77,10 +79,15 @@ def get_cached_guess(clues, words: WordSet):
     """
     from config import Config
     config = Config()
-    if config.get_use_cache() and clues.get_num_guesses() == 1:
+    if (config.get_use_cache() and clues.get_num_guesses() == 1
+            and dictionary is not None and answers is not None):
         guess_cache = SecondGuessCache()
+        guess_cache.set_context(dictionary, answers)
         if guess_cache.in_cache(clues):
             (guess, score) = guess_cache.get(clues)
+            allowed = select_guess_set(dictionary, words, clues)
+            if guess not in allowed:
+                return None
             logic = Logic()
             logic.update('cache lookup', float(score), words)
             return (guess, logic)
@@ -143,7 +150,9 @@ def resolve_guess_ties(best_guesses: list[str], words: WordSet) -> str:
     return random.choice(final_candidates)
 
 
-def best_guess(dictionary: WordSet, words: WordSet, clues) -> tuple[str, Logic]:
+def best_guess(
+        dictionary: WordSet, words: WordSet, clues,
+        answers: WordSet | None = None) -> tuple[str, Logic]:
     """
     Determine the optimal guess from the current word set.
 
@@ -154,6 +163,7 @@ def best_guess(dictionary: WordSet, words: WordSet, clues) -> tuple[str, Logic]:
         dictionary (WordSet): Full set of legal guesses.
         words (WordSet): Current possible answers.
         clues: Accumulated clues so far.
+        answers: Complete answer set for checking cache compatibility, if available.
 
     Returns:
         tuple[str, Logic]: The best guess and its logic information.
@@ -167,7 +177,7 @@ def best_guess(dictionary: WordSet, words: WordSet, clues) -> tuple[str, Logic]:
 
     log_solution_space(words)
 
-    cached = get_cached_guess(clues, words)
+    cached = get_cached_guess(clues, words, dictionary, answers)
     if cached:
         return cached
 

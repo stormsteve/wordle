@@ -138,6 +138,7 @@ def execute_game_rounds(
     from config import Config
     config = Config()
     word_length = config.get_word_length()
+    all_answers = legal_answers.copy()
     for row_num in range(1, config.get_max_guesses() + 1):
         logic = mode_class.print_raw_guess(guess, row_num, logic)
         try:
@@ -166,7 +167,7 @@ def execute_game_rounds(
                 return guess
             legal_answers = clues.filter_words(legal_answers)
             from best_guess import best_guess
-            guess, logic = best_guess(legal_guesses, legal_answers, clues)
+            guess, logic = best_guess(legal_guesses, legal_answers, clues, all_answers)
     return guess
 
 

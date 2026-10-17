@@ -122,19 +122,19 @@ class GuessCache (SecondGuessCache):
         # just use that and return.
         if guesses == 1 and self.in_cache(clues):
             logic = Logic()
-            score = self._cache[self.key(clues)].get_score()
+            score = self._cache[self.get_key(clues)].get_score()
             logic.update('cached guess', score, set())
-            return self._cache[self.key(clues)].get_guess(), words
+            return self._cache[self.get_key(clues)].get_guess(), words
 
         # Find the best guess
-        this_guess, logic = best_guess(legal_guess_list, words, clues)
+        this_guess, logic = best_guess(legal_guess_list, words, clues, legal_answers)
 
         # If we just found the 2nd guess then add it to the cache and
         # update daddy
         if guesses == 1 and not self.in_cache(clues):
             score = round(logic.get_score(), 3)
             self.add(clues, this_guess, score)
-            out_queue.put(f'CACHE_UPDATE:{self.key(clues)}:{this_guess}:{score}')
+            out_queue.put(f'CACHE_UPDATE:{self.get_key(clues)}:{this_guess}:{score}')
 
         return this_guess, words
 
@@ -300,6 +300,7 @@ def main() -> None:
 
     concurrent = Concurrent()
     cache = GuessCache(first_guess_words)
+    cache.set_context(legal_guesses, legal_answers)
 
     try:
         fill_and_run(legal_answers, concurrent, cache)

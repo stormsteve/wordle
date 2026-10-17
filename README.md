@@ -98,6 +98,10 @@ pytest
 
 ## Cache Builder
 
+The cache JSON stores dictionary, complete answer-set, and scoring compatibility metadata
+once per file. Individual rows retain their short `opening-word;clue-pattern` keys.
+Older cache entries are ignored after scoring changes; run `build_cache.py` to rebuild them.
+
 `build_cache.py` precomputes second-guess cache data and writes it to `wordle_cache.json`. This can improve solver performance for runs that use cached second-guess lookups.
 
 While building the cache, it also evaluates the configured starting words and computes their average number of guesses across the answer set.

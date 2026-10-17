@@ -11,6 +11,7 @@ import datetime                   # for now()
 import logging                    # logging
 import pathlib                    # cache file timestamp
 import json                       # serializing the cache
+import hashlib
 from typing import Any, Optional  # typehinting with Any and Optional
 
 from mytypes import WordSet       # My type hints
@@ -61,7 +62,24 @@ class SecondGuessCache ():
         self._cache: dict[str, SecondGuess] = {}
         self._cache_stamp: float = 0.0
         self._dirty: bool = False
+        self._metadata: dict | None = None
         self.load(dont_load)
+
+    def set_context(self, dictionary: WordSet, answers: WordSet) -> None:
+        """Check file-level compatibility with the complete dictionary and answer set."""
+        config = Config()
+        algorithm = config.get_algorithm()
+        metadata = {
+            'version': 3,
+            'word_length': config.get_word_length(),
+            'algorithm': f'{algorithm.__module__}.{algorithm.__qualname__}',
+            'dictionary': hashlib.sha256('\n'.join(sorted(dictionary)).encode('utf-8')).hexdigest(),
+            'answers': hashlib.sha256('\n'.join(sorted(answers)).encode('utf-8')).hexdigest(),
+        }
+        if metadata != self._metadata:
+            self._cache.clear()
+            self._dirty = False
+        self._metadata = metadata
 
     def load(self, dont_load:Optional[WordSet] = None) -> None:
         """Load the cache from a file if it is stale."""
@@ -86,18 +104,19 @@ class SecondGuessCache ():
                 with open(cache_file_name, 'r', encoding='UTF-8') as f:
                     cache_json = json.load(f)
 
-                # This is a hack. I didn't make a custom function to read a
-                # SecondGuess JSON
-                word_length = config.get_word_length()
+                metadata = cache_json.get('metadata')
+                if not isinstance(metadata, dict) or metadata.get('version') != 3:
+                    logging.debug('Ignoring cache without compatible metadata.')
+                    return
+                if self._metadata is not None and metadata != self._metadata:
+                    logging.debug('Ignoring cache with different dictionary or scoring settings.')
+                    return
+                self._metadata = metadata
                 self._cache.update({
                     k: SecondGuess(i['guess'], i['score'])
-                    for k, i in cache_json.items()
-                    if not dont_load or k[:word_length] not in dont_load
+                    for k, i in cache_json['entries'].items()
+                    if not dont_load or k.split(';')[0] not in dont_load
                 })
-#                for k, i in cache_json.items():
-#                    if (not dont_load is None
-#                        k[:config.get_word_length()] not in dont_load):
-#                        self._cache[k] = SecondGuess(i['guess'], i['score'])
 
                 logging.debug('Cache has %d entries', len(self._cache))
             except Exception as e: # pylint: disable=broad-exception-caught
@@ -110,7 +129,8 @@ class SecondGuessCache ():
             {key: value.to_dict() for key, value in self._cache.items()})
         # Make it human readable
         return json.dumps(
-            serialized_cache, sort_keys = True).replace('},', '},\n')
+            {'metadata': self._metadata, 'entries': serialized_cache},
+            sort_keys = True).replace('},', '},\n')
 
     def serialize(self) -> None:
         """Serialize the cache and write it to a file."""
@@ -127,9 +147,13 @@ class SecondGuessCache ():
         """Return the key used in the JSON format."""
         return f'{clues.get_guesses()[0]};{clues.get_last()}'
 
+    def get_key(self, clues: Clues) -> str:
+        """Return the short opening-word and feedback key."""
+        return self.key(clues)
+
     def in_cache(self, clues: Clues) -> bool:
         """Is the given clue object in the cache?"""
-        return SecondGuessCache.key(clues) in self._cache
+        return self.get_key(clues) in self._cache
 
     def in_cache2(self, start_clue:str) -> bool:
         """Is the given clue string in the cache?"""
@@ -140,14 +164,14 @@ class SecondGuessCache ():
         Get the best second guess for a given clue object. Also get the score.
         """
         return (
-            self._cache[SecondGuessCache.key(clues)].get_guess(),
-            self._cache[SecondGuessCache.key(clues)].get_score())
+            self._cache[self.get_key(clues)].get_guess(),
+            self._cache[self.get_key(clues)].get_score())
 
     def add(self, clues: Clues, guess: str, score: float) -> None:
         """Add a second guess clue to the cache."""
         if not self.in_cache(clues):
             self._dirty = True
-            self._cache[SecondGuessCache.key(clues)] = SecondGuess(guess,score)
+            self._cache[self.get_key(clues)] = SecondGuess(guess,score)
 
     def add2(self, start_clue:str, next_guess:str, score: float) -> None:
         """Add a second guess clue string to the cache."""

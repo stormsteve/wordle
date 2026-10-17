@@ -19,6 +19,10 @@ def test_get_cached_guess_returns_logic_when_cache_hit(monkeypatch):
 
     class FakeCache:
         @staticmethod
+        def set_context(dictionary, answers):
+            pass
+
+        @staticmethod
         def in_cache(clues_obj):
             return True
 
@@ -28,7 +32,8 @@ def test_get_cached_guess_returns_logic_when_cache_hit(monkeypatch):
 
     monkeypatch.setattr(best_guess, "SecondGuessCache", FakeCache)
 
-    guess, logic = best_guess.get_cached_guess(clues, {"crane", "slate"})
+    words = {"crane", "slate"}
+    guess, logic = best_guess.get_cached_guess(clues, words, words, words)
 
     assert guess == "slate"
     assert logic.get_score() == 1.75
@@ -130,7 +135,7 @@ def test_best_guess_returns_cached_guess_before_scoring(monkeypatch):
     cached_logic = Logic()
     cached_logic.update("cache lookup", 0.75, {"slate"})
 
-    monkeypatch.setattr(best_guess, "get_cached_guess", lambda clues, words: ("slate", cached_logic))
+    monkeypatch.setattr(best_guess, "get_cached_guess", lambda clues, words, dictionary, answers: ("slate", cached_logic))
     monkeypatch.setattr(best_guess, "find_best_guess", lambda all_guesses, words: (_ for _ in ()).throw(AssertionError("should not score")))
 
     guess, logic = best_guess.best_guess({"crane", "slate"}, {"slate"}, Clues())
@@ -140,7 +145,7 @@ def test_best_guess_returns_cached_guess_before_scoring(monkeypatch):
 
 
 def test_best_guess_uses_tie_breaker_when_multiple_best_guesses(monkeypatch):
-    monkeypatch.setattr(best_guess, "get_cached_guess", lambda clues, words: None)
+    monkeypatch.setattr(best_guess, "get_cached_guess", lambda clues, words, dictionary, answers: None)
     monkeypatch.setattr(best_guess, "select_guess_set", lambda dictionary, words, clues: {"crane", "slate"})
     monkeypatch.setattr(best_guess, "find_best_guess", lambda all_guesses, words: (["crane", "slate"], 1.25))
     monkeypatch.setattr(best_guess, "resolve_guess_ties", lambda guesses, words: "slate")

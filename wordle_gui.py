@@ -770,7 +770,7 @@ class WordleGUI:
 
         def worker() -> None:
             try:
-                guess, logic = best_guess(self.legal_guesses, remaining, clues)
+                guess, logic = best_guess(self.legal_guesses, remaining, clues, self.legal_answers)
                 if not self.is_closing:
                     self.recommendation_queue.put(('play', token, guess, str(logic)))
             finally:
@@ -810,7 +810,7 @@ class WordleGUI:
 
         def worker() -> None:
             try:
-                guess, logic = best_guess(self.legal_guesses, remaining, clues)
+                guess, logic = best_guess(self.legal_guesses, remaining, clues, self.legal_answers)
                 if not self.is_closing:
                     self.recommendation_queue.put(('solve', token, guess, str(logic)))
             finally:

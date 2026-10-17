@@ -108,7 +108,8 @@ def test_execute_game_rounds_uses_best_guess_and_shows_answer_on_failure(monkeyp
     next_logic.update("accurate", 1.5, {"crane"})
     best_guess_calls = []
 
-    def fake_best_guess(legal_guesses, legal_answers, clues):
+    def fake_best_guess(legal_guesses, legal_answers, clues, all_answers):
+        assert all_answers == {'crane'}
         best_guess_calls.append((set(legal_guesses), set(legal_answers), clues.get_num_guesses()))
         return "crane", next_logic
 
