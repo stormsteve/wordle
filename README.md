@@ -23,6 +23,19 @@ Everything Wordle -- Play, Solve, Assist
 - `colorama`
 - `tkinter` for the GUI
 
+For a clean Ubuntu setup, install the system Python and Tk packages, then create
+an isolated environment and install the project dependencies:
+
+```bash
+sudo apt-get update
+sudo apt-get install python3 python3-venv python3-tk wamerican
+git clone https://github.com/stormsteve/wordle.git
+cd wordle
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+```
+
 Install runtime dependencies with:
 
 ```bash
@@ -37,6 +50,8 @@ pip install -r requirements-dev.txt
 
 ## Quick Start
 
+The default five-letter game uses the tracked `legal_guesses.txt` and
+`legal_answers.txt` files, so it does not depend on a host-provided dictionary.
 Run the CLI:
 
 ```bash
@@ -98,8 +113,10 @@ pytest
 
 ## Cache Builder
 
-The cache JSON stores dictionary, complete answer-set, and scoring compatibility metadata
-once per file. Individual rows retain their short `opening-word;clue-pattern` keys.
+The cache JSON stores word-length and scoring compatibility metadata once per
+file, while cache entries can be reused across different source dictionaries.
+Individual rows retain their short `opening-word;clue-pattern` keys. Entries
+whose suggested guess is not valid in the active dictionary are ignored.
 Older cache entries are ignored after scoring changes; run `build_cache.py` to rebuild them.
 
 `build_cache.py` precomputes second-guess cache data and writes it to `wordle_cache.json`. This can improve solver performance for runs that use cached second-guess lookups.
@@ -127,7 +144,10 @@ It is a batch utility rather than a normal CLI entry point, so it starts process
 
 ## Data Files
 
-The file `/usr/share/dict/american-english` is provided by Ubuntu's `wamerican` package. The local file `american-english` is derived from that source and is intentionally not tracked in Git.
+The default five-letter game is fully defined by the tracked curated word
+lists. For other word lengths, the solver uses `/usr/share/dict/words` or
+`/usr/share/dict/american-english`; install Ubuntu's `wamerican` package or
+provide another source with `--dictionary`.
 
 The generated cache file `wordle_cache.json` is also intentionally not tracked.
 

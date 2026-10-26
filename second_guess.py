@@ -11,7 +11,6 @@ import datetime                   # for now()
 import logging                    # logging
 import pathlib                    # cache file timestamp
 import json                       # serializing the cache
-import hashlib
 import tempfile
 from typing import Any, Optional  # typehinting with Any and Optional
 
@@ -66,21 +65,25 @@ class SecondGuessCache ():
         self._metadata: dict | None = None
         self.load(dont_load)
 
-    def set_context(self, dictionary: WordSet, answers: WordSet) -> None:
-        """Check file-level compatibility with the complete dictionary and answer set."""
+    def set_context(self, dictionary: WordSet, answers: WordSet) -> None: # pylint: disable=unused-argument
+        """Set cache compatibility context, independent of source word-list contents."""
         config = Config()
         algorithm = config.get_algorithm()
         metadata = {
             'version': 3,
             'word_length': config.get_word_length(),
             'algorithm': f'{algorithm.__module__}.{algorithm.__qualname__}',
-            'dictionary': hashlib.sha256('\n'.join(sorted(dictionary)).encode('utf-8')).hexdigest(),
-            'answers': hashlib.sha256('\n'.join(sorted(answers)).encode('utf-8')).hexdigest(),
         }
-        if metadata != self._metadata:
+        if self._metadata and not self._compatible_context(self._metadata, metadata):
             self._cache.clear()
             self._dirty = False
         self._metadata = metadata
+
+    @staticmethod
+    def _compatible_context(first: dict, second: dict) -> bool:
+        """Compare settings that affect cache key shape or recommendation scoring."""
+        return all(first.get(key) == second.get(key)
+                   for key in ('version', 'word_length', 'algorithm'))
 
     def load(self, dont_load:Optional[WordSet] = None) -> None:
         """Load the cache from a file if it is stale."""
@@ -107,8 +110,9 @@ class SecondGuessCache ():
                 if not isinstance(metadata, dict) or metadata.get('version') != 3:
                     logging.debug('Ignoring cache without compatible metadata.')
                     return
-                if self._metadata is not None and metadata != self._metadata:
-                    logging.debug('Ignoring cache with different dictionary or scoring settings.')
+                if (self._metadata is not None
+                        and not self._compatible_context(metadata, self._metadata)):
+                    logging.debug('Ignoring cache with incompatible scoring settings.')
                     return
                 self._metadata = metadata
                 self._cache.update({

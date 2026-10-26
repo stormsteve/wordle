@@ -163,6 +163,31 @@ def build_dictionaries() -> tuple[WordSet, WordSet]:
     word_length = config.get_word_length()
     filename = config.get_word_list_dictionary()
 
+    # The tracked Wordle lists make the default five-letter game independent
+    # of the host OS dictionary and keep its answer set reproducible.
+    default_word_list = pathlib.Path(__file__).resolve().parent / 'legal_guesses.txt'
+    is_default_word_list = pathlib.Path(resolve_word_file(filename)).resolve() == default_word_list
+    if is_default_word_list:
+        if word_length == 5:
+            return (load_word_set_from_file(filename),
+                    load_word_set_from_file('legal_answers.txt'))
+        source_candidates = (
+            config.get_word_list_dictionary2(),
+            'american-english',
+            '/usr/share/dict/american-english',
+        )
+        filename = next(
+            (candidate for candidate in source_candidates
+             if pathlib.Path(resolve_word_file(candidate)).is_file()),
+            config.get_word_list_dictionary2(),
+        )
+        if not pathlib.Path(resolve_word_file(filename)).is_file():
+            logging.error(
+                'No source dictionary found for %d-letter words. Install '
+                'Ubuntu package wamerican or pass --dictionary PATH.', word_length)
+        logging.info('Using source dictionary for %d-letter words: %s',
+                     word_length, filename)
+
     legal_guesses, one_char_less, two_chars_less = load_words_from_file(filename, word_length)
 
     if word_length == 5:

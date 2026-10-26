@@ -63,7 +63,7 @@ class Config: # pylint: disable=too-many-instance-attributes,too-many-public-met
         self._cache_dir = '.'
 
         # word list dictionary. Can be set via the command line.
-        self._word_list_dictionary: str = 'american-english'
+        self._word_list_dictionary: str = 'legal_guesses.txt'
         self._word_list_dictionary2: str = '/usr/share/dict/words'
 
         # The word length. Can be changed via the command line.

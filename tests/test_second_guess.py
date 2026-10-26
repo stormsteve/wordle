@@ -13,7 +13,7 @@ from config import Config
 from second_guess import SecondGuessCache
 
 
-def test_cache_context_survives_reload_and_rejects_incompatible_inputs(tmp_path):
+def test_cache_context_survives_reload_across_word_lists(tmp_path):
     config = Config()
     config.set_cache_dir(str(tmp_path))
     config.set_algorithm(accurate_avg)
@@ -29,9 +29,9 @@ def test_cache_context_survives_reload_and_rejects_incompatible_inputs(tmp_path)
     loaded.set_context(set(reversed(sorted(dictionary))), words)
     assert loaded.get(clues) == ('adieu', 1.5)
     loaded.set_context(dictionary | {'extra'}, words)
-    assert not loaded.in_cache(clues)
+    assert loaded.get(clues) == ('adieu', 1.5)
     loaded.set_context(dictionary, {'sissy'})
-    assert not loaded.in_cache(clues)
+    assert loaded.get(clues) == ('adieu', 1.5)
     config.set_algorithm(accurate_max)
     loaded.set_context(dictionary, words)
     assert not loaded.in_cache(clues)
@@ -77,17 +77,8 @@ def test_cache_hit_respects_dictionary_and_final_attempt(
     assert (result[0] if result else None) == expected
 
 
-def test_metadata_is_written_once_and_row_keys_stay_short(tmp_path, monkeypatch):
-    import second_guess
+def test_metadata_is_word_list_independent_and_row_keys_stay_short(tmp_path):
     Config().set_cache_dir(str(tmp_path))
-    calls = []
-    original_hash = second_guess.hashlib.sha256
-
-    def count_hash(data):
-        calls.append(data)
-        return original_hash(data)
-
-    monkeypatch.setattr(second_guess.hashlib, 'sha256', count_hash)
     cache = SecondGuessCache()
     cache.set_context({'crane', 'slate'}, {'slate'})
     for word in ('crane', 'slate'):
@@ -100,8 +91,8 @@ def test_metadata_is_written_once_and_row_keys_stay_short(tmp_path, monkeypatch)
     assert set(payload) == {'metadata', 'entries'}
     assert payload['metadata']['version'] == 3
     assert payload['metadata']['algorithm'] == 'algorithm.accurate_avg'
+    assert set(payload['metadata']) == {'version', 'word_length', 'algorithm'}
     assert set(payload['entries']) == {'crane;bbbbb', 'slate;bbbbb'}
-    assert len(calls) == 2
     loaded = SecondGuessCache({'crane'})
     assert not loaded.in_cache2('crane;bbbbb')
     assert loaded.in_cache2('slate;bbbbb')
