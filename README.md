@@ -127,6 +127,30 @@ load-based scaling can still affect pruning and timings. The
 `returned_score_counts` field counts retained score results, not scoring calls;
 every sampled guess is attempted in each completed repetition.
 
+### Example results
+
+On a Windows 11 Home 26H2 host running WSL2 (Linux kernel
+`6.18.54.1-microsoft-standard-WSL2`), with an Intel Core Ultra 9 185H,
+32 GB host RAM, Ubuntu 26.04.1 LTS, Python 3.14.4, and 16 CPUs available to
+the WSL process (CPU IDs 0–15), scoring 200 guesses against 200 answers with
+the average algorithm produced these medians. WSL reported 15 GiB total
+memory and 4 GiB swap; at measurement time, 14 GiB memory and all swap were
+available.
+
+| Processes | Median | Range across 5 runs | Speedup vs. 1 process |
+| ---: | ---: | ---: | ---: |
+| 0 (single-process) | 1.476 s | 1.462–1.501 s | 1.00× |
+| 4 | 0.929 s | 0.880–1.110 s | 1.59× |
+| 8 | 0.743 s | 0.728–0.759 s | 1.99× |
+| 12 | 0.736 s | 0.711–0.800 s | 2.01× |
+| 16 | 1.048 s | 1.027–1.083 s | 1.41× |
+
+All runs used workload hash `1de957c9976aa786d50cc0601532bb55ece766a8343d6b4cb72fdc986e1e2715`.
+Eight and 12 workers performed similarly, with overlapping run ranges; these
+measurements don't establish a meaningful difference between them. Sixteen
+workers were slower on this workload. Results are machine-specific and aren't
+a performance guarantee.
+
 ## Capabilities
 
 - `--length` supports Wordle-like puzzles beyond the default 5-letter game
