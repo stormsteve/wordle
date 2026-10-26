@@ -21,14 +21,14 @@ Everything Wordle -- Play, Solve, Assist
 - Python 3.12 or newer recommended
 - `psutil`
 - `colorama`
-- `tkinter` for the GUI
+- `tkinter` for the GUI (optional)
 
-For a clean Ubuntu setup, install the system Python and Tk packages, then create
-an isolated environment and install the project dependencies:
+For a clean Ubuntu setup, install Python, create an isolated environment, and
+install the development requirements (which include runtime requirements):
 
 ```bash
 sudo apt-get update
-sudo apt-get install python3 python3-venv python3-tk wamerican
+sudo apt-get install python3 python3-venv
 git clone https://github.com/stormsteve/wordle.git
 cd wordle
 python3 -m venv .venv
@@ -36,17 +36,16 @@ source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 ```
 
-Install runtime dependencies with:
+Optional Ubuntu packages:
 
 ```bash
-pip install -r requirements.txt
+sudo apt-get install python3-tk  # GUI support
+sudo apt-get install wamerican  # system dictionary for non-five-letter games
 ```
 
-Install test dependencies with:
+For a runtime-only environment, install `requirements.txt` instead of
+`requirements-dev.txt`.
 
-```bash
-pip install -r requirements-dev.txt
-```
 
 ## Quick Start
 
@@ -100,6 +99,26 @@ Run tests:
 pytest
 ```
 
+## Command-line options
+
+Use `python3 wordle.py --help` for the complete generated help. The main
+options are:
+
+| Option | Purpose |
+| --- | --- |
+| `--mode {auto,clues,advise,play}` | Solve a known answer, enter clues, get advice, or play. |
+| `--answer WORD` | Answer to solve in `auto` mode. |
+| `--start WORD` | Opening guess; defaults to the configured list. |
+| `--length N` | Word length, from 1 to 19 (default: 5). |
+| `--max N` | Maximum guesses (default: 6). |
+| `--rate-alg {1,2,3}` | Choose average, median, or maximum scoring. |
+| `--processes N` | Maximum child workers; `0` uses single-process scoring. |
+| `--dictionary PATH` | Source word list; non-five-letter games need a source list. |
+| `--no-cache` | Disable cached second-guess recommendations. |
+| `--cache-dir DIR` | Cache location (default: current directory). |
+| `--gui` | Launch the Tkinter interface. |
+| `--logging LEVEL` | Set output detail (`error`, `info`, `debug`, etc.). |
+
 ## Benchmarking
 
 Run a repeatable sample of the solver's guess-scoring workload:
@@ -151,17 +170,6 @@ measurements don't establish a meaningful difference between them. Sixteen
 workers were slower on this workload. Results are machine-specific and aren't
 a performance guarantee.
 
-## Capabilities
-
-- `--length` supports Wordle-like puzzles beyond the default 5-letter game
-- `--mode auto` solves for a known answer
-- `--mode clues` narrows candidates from clue patterns you enter
-- `--mode advise` recommends guesses while you play elsewhere
-- `--mode play` lets you play locally
-- `--rate-alg` switches between available guess-rating strategies
-- `--processes` controls parallel worker usage for more expensive searches
-- `--dictionary` lets you point the solver at a different source word list
-
 ## Cache Builder
 
 The cache JSON stores word-length and scoring compatibility metadata once per
@@ -170,9 +178,14 @@ Individual rows retain their short `opening-word;clue-pattern` keys. Entries
 whose suggested guess is not valid in the active dictionary are ignored.
 Older cache entries are ignored after scoring changes; run `build_cache.py` to rebuild them.
 
-`build_cache.py` precomputes second-guess cache data and writes it to `wordle_cache.json`. This can improve solver performance for runs that use cached second-guess lookups.
+`build_cache.py` evaluates the configured opening guesses across the full answer
+set and writes second-guess data to `wordle_cache.json`. At the default
+five-letter settings, this is a substantial batch job; the script uses
+available CPUs and displays progress and an estimated time remaining. Building
+the cache is optional and only helps runs that use cached second guesses.
 
-While building the cache, it also evaluates the configured starting words and computes their average number of guesses across the answer set.
+It also reports each opening guess's average number of guesses across the
+answer set.
 
 Run it with:
 
@@ -180,18 +193,25 @@ Run it with:
 python3 build_cache.py
 ```
 
-It is a batch utility rather than a normal CLI entry point, so it starts processing immediately when launched.
+It starts processing immediately rather than presenting an interactive prompt.
+The cache is saved periodically, so interrupting the build may discard work
+since the last save; rerun the command to continue filling missing entries.
 
 ## Repository Layout
 
 - `wordle.py`: main entry point
+- `argument_parser.py`, `config.py`: command-line parsing and shared configuration
 - `wordle_gui.py`, `wordle_gui_layout.py`: Tkinter GUI and widget layout
 - `game_logic.py`, `game_modes.py`, `logic.py`: gameplay flow and solver logic
-- `algorithm.py`, `best_guess.py`, `second_guess.py`: guess scoring and optimization
+- `algorithm.py`, `best_guess.py`, `second_guess.py`: guess scoring and cache-backed optimization
+- `clues.py`, `clue_list.py`: clue representation, feedback, and candidate filtering
+- `myconcurrent.py`, `mytypes.py`: worker-process management and shared type aliases
 - `dictionary.py` and `*.txt`: dictionary inputs and curated answer/guess lists
-- `build_cache.py`: cache generation utility
+- `build_cache.py`, `benchmark.py`: cache generation and solver benchmarking
 - `spelling_bee_cheat.py`: standalone helper for NYT Spelling Bee, separate from the main Wordle solver flow
 - `tests/`: automated tests
+- `requirements.txt`, `requirements-dev.txt`: runtime and development dependencies
+- `pytest.ini`, `.pylintrc`, `.github/workflows/ci.yml`: test, lint, and CI configuration
 
 ## Data Files
 
