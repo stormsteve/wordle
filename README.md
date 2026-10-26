@@ -117,7 +117,7 @@ It is a batch utility rather than a normal CLI entry point, so it starts process
 ## Repository Layout
 
 - `wordle.py`: main entry point
-- `wordle_gui.py`: Tkinter GUI
+- `wordle_gui.py`, `wordle_gui_layout.py`: Tkinter GUI and widget layout
 - `game_logic.py`, `game_modes.py`, `logic.py`: gameplay flow and solver logic
 - `algorithm.py`, `best_guess.py`, `second_guess.py`: guess scoring and optimization
 - `dictionary.py` and `*.txt`: dictionary inputs and curated answer/guess lists

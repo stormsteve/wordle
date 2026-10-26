@@ -7,7 +7,7 @@ Desktop GUI for the Wordle solver and game.
 
 # The GUI intentionally centralizes Tk state and follows the existing
 # flat-module architecture.
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-public-methods,too-few-public-methods,attribute-defined-outside-init,cyclic-import,line-too-long
+# pylint: disable=cyclic-import,line-too-long
 
 from __future__ import annotations
 
@@ -25,18 +25,9 @@ from config import Config
 from dictionary import build_dictionaries, resolve_word_file
 from logic import Logic
 from myconcurrent import num_active_children, random_word
+from wordle_gui_layout import COLOR_MAP, LayoutCallbacks, build_layout
 
 
-COLOR_MAP = {
-    'g': '#5f8f52',
-    'y': '#c9a227',
-    'b': '#3c4048',
-    'empty': '#f3eadb',
-    'text': '#1c1b1a',
-    'paper': '#fffaf2',
-    'accent': '#d96c47',
-    'border': '#d8c8b0',
-}
 
 
 def configure_gui_defaults() -> None:
@@ -56,8 +47,29 @@ def configure_gui_defaults() -> None:
         config.set_word_list_dictionary(config.get_word_list_dictionary2())
 
 
-class WordleGUI:
+# The application owns its Tk widgets and exposes a single run() entry point.
+class WordleGUI:  # pylint: disable=too-many-instance-attributes,too-few-public-methods
     """Tkinter-based front end for the existing Wordle engine."""
+
+    # These widgets are created by build_layout before the game is started.
+    notebook: ttk.Notebook
+    play_tab: tk.Frame
+    solve_tab: tk.Frame
+    play_board_frame: tk.Frame
+    play_guess_var: tk.StringVar
+    play_guess_entry: tk.Entry
+    play_status_var: tk.StringVar
+    play_recommendation_var: tk.StringVar
+    play_remaining_var: tk.StringVar
+    solve_board_frame: tk.Frame
+    solve_guess_var: tk.StringVar
+    solve_clue_var: tk.StringVar
+    solve_guess_entry: tk.Entry
+    solve_clue_label: tk.Label
+    solve_clue_entry: tk.Entry
+    solve_status_var: tk.StringVar
+    solve_recommendation_var: tk.StringVar
+    solve_remaining_var: tk.StringVar
 
     def __init__(self) -> None:
         configure_gui_defaults()
@@ -74,11 +86,7 @@ class WordleGUI:
         window_width = max(1040, 640 + (self.word_length * 72))
 
         self.root = tk.Tk()
-        self.root.title('Wordle GUI')
-        self.root.geometry(f'{window_width}x860')
-        self.root.minsize(window_width - 60, 820)
-        self.root.configure(bg=COLOR_MAP['paper'])
-        self.root.protocol('WM_DELETE_WINDOW', self._close_window)
+        self._configure_root(window_width)
 
         self.title_font = ('Georgia', 26, 'bold')
         self.subtitle_font = ('Georgia', 12)
@@ -97,6 +105,7 @@ class WordleGUI:
         self.solve_ready = False
         self.is_closing = False
         self.shutdown_dialog: tk.Toplevel | None = None
+        self.shutdown_status_var: tk.StringVar | None = None
         self.recommendation_queue: queue.SimpleQueue[tuple[str, int, str, str] | tuple[str]] = queue.SimpleQueue()
         self.active_recommendation_threads: set[threading.Thread] = set()
         self.recommendation_thread_lock = threading.Lock()
@@ -109,7 +118,15 @@ class WordleGUI:
         self.solve_clues = Clues()
         self.solve_remaining = self.legal_answers.copy()
 
-        self._build_layout()
+        build_layout(self, LayoutCallbacks(
+            tab_changed=self._on_tab_changed,
+            card=self._card,
+            build_board=self._build_board,
+            submit_play_guess=self._submit_play_guess,
+            new_play_game=self._new_play_game,
+            submit_solver_round=self._submit_solver_round,
+            reset_solver=self._reset_solver,
+        ))
         if self._initial_mode_uses_solver():
             self._new_play_game(recommend=False)
             self._reset_solver(recommend=True)
@@ -118,6 +135,14 @@ class WordleGUI:
             self._reset_solver(recommend=False)
         self.root.after(50, self._poll_recommendation_queue)
         self.root.after_idle(self._select_initial_tab)
+
+    def _configure_root(self, window_width: int) -> None:
+        """Configure the main window before building its widgets."""
+        self.root.title('Wordle GUI')
+        self.root.geometry(f'{window_width}x860')
+        self.root.minsize(window_width - 60, 820)
+        self.root.configure(bg=COLOR_MAP['paper'])
+        self.root.protocol('WM_DELETE_WINDOW', self._close_window)
 
     def run(self) -> None:
         """Launch the event loop."""
@@ -263,287 +288,6 @@ class WordleGUI:
             self.active_recommendation_threads.difference_update(completed)
             return len(self.active_recommendation_threads)
 
-    def _build_layout(self) -> None:
-        container = tk.Frame(self.root, bg=COLOR_MAP['paper'])
-        container.pack(fill='both', expand=True, padx=18, pady=18)
-
-        header = tk.Frame(container, bg=COLOR_MAP['paper'])
-        header.pack(fill='x', pady=(0, 12))
-
-        tk.Label(
-            header,
-            text='Wordle Control Room',
-            font=self.title_font,
-            fg=COLOR_MAP['text'],
-            bg=COLOR_MAP['paper'],
-        ).pack(anchor='w')
-        tk.Label(
-            header,
-            text=f'Play against a hidden answer or drive the solver with clue patterns for {self.word_length}-letter words.',
-            font=self.subtitle_font,
-            fg='#5a5248',
-            bg=COLOR_MAP['paper'],
-        ).pack(anchor='w', pady=(4, 0))
-
-        style = ttk.Style(self.root)
-        style.theme_use('clam')
-        style.configure('TNotebook', background=COLOR_MAP['paper'], borderwidth=0)
-        style.configure(
-            'TNotebook.Tab',
-            padding=(18, 10),
-            font=('Helvetica', 11, 'bold'),
-            background='#e6d7c2',
-            foreground='#6b6256',
-        )
-        style.map(
-            'TNotebook.Tab',
-            background=[('selected', 'white'), ('active', '#efe4d2')],
-            foreground=[('selected', COLOR_MAP['accent']), ('active', COLOR_MAP['text'])],
-        )
-
-        self.notebook = ttk.Notebook(container)
-        self.notebook.pack(fill='both', expand=True)
-
-        self.play_tab = tk.Frame(self.notebook, bg=COLOR_MAP['paper'])
-        self.solve_tab = tk.Frame(self.notebook, bg=COLOR_MAP['paper'])
-        self.notebook.add(self.play_tab, text='Play')
-        self.notebook.add(self.solve_tab, text='Solve')
-        self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
-
-        self._build_play_tab()
-        self._build_solve_tab()
-
-    def _build_play_tab(self) -> None:
-        top = tk.Frame(self.play_tab, bg=COLOR_MAP['paper'])
-        top.pack(fill='both', expand=True, padx=8, pady=8)
-
-        left = self._card(top)
-        left.pack(side='left', fill='both', expand=True, padx=(0, 8))
-
-        right = self._card(top, width=self.side_panel_width)
-        right.pack(side='left', fill='both')
-        right.pack_propagate(False)
-
-        tk.Label(left, text='Your board', font=('Georgia', 18, 'bold'),
-                 bg='white', fg=COLOR_MAP['text']).pack(anchor='w')
-        self.play_board_frame = tk.Frame(left, bg='white')
-        self.play_board_frame.pack(pady=(16, 8))
-        self.play_cells = self._build_board(self.play_board_frame)
-
-        controls = tk.Frame(left, bg='white')
-        controls.pack(fill='x', pady=(8, 0))
-        tk.Label(controls, text='Guess', font=self.body_font,
-                 bg='white', fg=COLOR_MAP['text']).pack(anchor='w')
-        self.play_guess_var = tk.StringVar()
-        self.play_guess_entry = tk.Entry(
-            controls,
-            textvariable=self.play_guess_var,
-            font=('Helvetica', 18, 'bold'),
-            justify='center',
-            relief='solid',
-            borderwidth=1,
-        )
-        self.play_guess_entry.pack(fill='x', pady=(4, 10))
-        self.play_guess_entry.bind('<Return>', lambda _event: self._submit_play_guess())
-
-        buttons = tk.Frame(controls, bg='white')
-        buttons.pack(fill='x')
-        tk.Button(
-            buttons,
-            text='Submit Guess',
-            command=self._submit_play_guess,
-            bg=COLOR_MAP['accent'],
-            fg='white',
-            activebackground='#bf5d3b',
-            relief='flat',
-            font=('Helvetica', 11, 'bold'),
-            padx=14,
-            pady=10,
-        ).pack(side='left')
-        tk.Button(
-            buttons,
-            text='New Game',
-            command=self._new_play_game,
-            bg='#efe4d2',
-            fg=COLOR_MAP['text'],
-            activebackground='#e3d2b8',
-            relief='flat',
-            font=('Helvetica', 11, 'bold'),
-            padx=14,
-            pady=10,
-        ).pack(side='left', padx=(10, 0))
-
-        self.play_status_var = tk.StringVar()
-        tk.Label(
-            left,
-            textvariable=self.play_status_var,
-            font=self.body_font,
-            bg='white',
-            fg='#6b6256',
-            wraplength=460,
-            justify='left',
-        ).pack(anchor='w', pady=(14, 0))
-
-        tk.Label(right, text='Solver wingman', font=('Georgia', 18, 'bold'),
-                 bg='white', fg=COLOR_MAP['text'],
-                 wraplength=self.side_panel_wrap, justify='left').pack(anchor='w')
-        self.play_recommendation_var = tk.StringVar()
-        tk.Label(
-            right,
-            textvariable=self.play_recommendation_var,
-            font=('Helvetica', 16, 'bold'),
-            bg='white',
-            fg=COLOR_MAP['accent'],
-            wraplength=self.side_panel_wrap,
-            justify='left',
-        ).pack(anchor='w', pady=(14, 8))
-        self.play_remaining_var = tk.StringVar()
-        tk.Label(
-            right,
-            textvariable=self.play_remaining_var,
-            font=self.body_font,
-            bg='white',
-            fg='#6b6256',
-            wraplength=self.side_panel_wrap,
-            justify='left',
-        ).pack(anchor='w')
-        tk.Label(
-            right,
-            text='Tip: press Enter after typing a guess. The recommendation updates after every row.',
-            font=self.body_font,
-            bg='white',
-            fg='#6b6256',
-            wraplength=self.side_panel_wrap,
-            justify='left',
-        ).pack(anchor='w', pady=(20, 0))
-
-    def _build_solve_tab(self) -> None:
-        top = tk.Frame(self.solve_tab, bg=COLOR_MAP['paper'])
-        top.pack(fill='both', expand=True, padx=8, pady=8)
-
-        left = self._card(top)
-        left.pack(side='left', fill='both', expand=True, padx=(0, 8))
-
-        right = self._card(top, width=self.side_panel_width)
-        right.pack(side='left', fill='both')
-        right.pack_propagate(False)
-
-        tk.Label(left, text='Solver board', font=('Georgia', 18, 'bold'),
-                 bg='white', fg=COLOR_MAP['text']).pack(anchor='w')
-        self.solve_board_frame = tk.Frame(left, bg='white')
-        self.solve_board_frame.pack(pady=(16, 8))
-        self.solve_cells = self._build_board(self.solve_board_frame)
-
-        form = tk.Frame(left, bg='white')
-        form.pack(fill='x', pady=(8, 0))
-
-        tk.Label(form, text='Guess', font=self.body_font,
-                 bg='white', fg=COLOR_MAP['text']).grid(row=0, column=0, sticky='w')
-        self.solve_clue_label = tk.Label(form, text='Clue pattern', font=self.body_font,
-                                         bg='white', fg=COLOR_MAP['text'])
-        self.solve_clue_label.grid(row=0, column=1, sticky='w', padx=(12, 0))
-
-        self.solve_guess_var = tk.StringVar()
-        self.solve_clue_var = tk.StringVar()
-        self.solve_guess_entry = tk.Entry(
-            form,
-            textvariable=self.solve_guess_var,
-            font=('Helvetica', 16, 'bold'),
-            justify='center',
-            relief='solid',
-            borderwidth=1,
-            width=10,
-        )
-        self.solve_guess_entry.grid(row=1, column=0, sticky='we', pady=(4, 10))
-        self.solve_clue_entry = tk.Entry(
-            form,
-            textvariable=self.solve_clue_var,
-            font=('Helvetica', 16, 'bold'),
-            justify='center',
-            relief='solid',
-            borderwidth=1,
-            width=10,
-        )
-        self.solve_clue_entry.grid(row=1, column=1, sticky='we', padx=(12, 0), pady=(4, 10))
-        self.solve_guess_entry.bind('<Return>', lambda _event: self._submit_solver_round())
-        self.solve_clue_entry.bind('<Return>', lambda _event: self._submit_solver_round())
-
-        button_row = tk.Frame(left, bg='white')
-        button_row.pack(fill='x')
-        tk.Button(
-            button_row,
-            text='Add Round',
-            command=self._submit_solver_round,
-            bg=COLOR_MAP['accent'],
-            fg='white',
-            activebackground='#bf5d3b',
-            relief='flat',
-            font=('Helvetica', 11, 'bold'),
-            padx=14,
-            pady=10,
-        ).pack(side='left')
-        tk.Button(
-            button_row,
-            text='Reset Solver',
-            command=self._reset_solver,
-            bg='#efe4d2',
-            fg=COLOR_MAP['text'],
-            activebackground='#e3d2b8',
-            relief='flat',
-            font=('Helvetica', 11, 'bold'),
-            padx=14,
-            pady=10,
-        ).pack(side='left', padx=(10, 0))
-
-        tk.Label(
-            left,
-            text=f'Use g, y, b for green, yellow, black. Enter exactly {self.word_length} clue characters.',
-            font=self.body_font,
-            bg='white',
-            fg='#6b6256',
-            wraplength=460,
-            justify='left',
-        ).pack(anchor='w', pady=(14, 0))
-        self.solve_status_var = tk.StringVar()
-        tk.Label(
-            left,
-            textvariable=self.solve_status_var,
-            font=self.body_font,
-            bg='white',
-            fg='#6b6256',
-            wraplength=460,
-            justify='left',
-        ).pack(anchor='w', pady=(10, 0))
-
-        tk.Label(
-            right,
-            text='Next recommendation',
-            font=('Georgia', 18, 'bold'),
-            bg='white',
-            fg=COLOR_MAP['text'],
-            wraplength=self.side_panel_wrap,
-            justify='left',
-        ).pack(anchor='w')
-        self.solve_recommendation_var = tk.StringVar()
-        tk.Label(
-            right,
-            textvariable=self.solve_recommendation_var,
-            font=('Helvetica', 16, 'bold'),
-            bg='white',
-            fg=COLOR_MAP['accent'],
-            wraplength=self.side_panel_wrap,
-            justify='left',
-        ).pack(anchor='w', pady=(14, 8))
-        self.solve_remaining_var = tk.StringVar()
-        tk.Label(
-            right,
-            textvariable=self.solve_remaining_var,
-            font=self.body_font,
-            bg='white',
-            fg='#6b6256',
-            wraplength=self.side_panel_wrap,
-            justify='left',
-        ).pack(anchor='w')
 
     def _card(self, parent: tk.Widget, width: int | None = None) -> tk.Frame:
         frame = tk.Frame(
