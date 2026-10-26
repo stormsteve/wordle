@@ -7,9 +7,23 @@ from __future__ import annotations
 
 import logging
 
+import pytest
 from config import Config
 import user_interface
 from clues import Clues
+
+
+@pytest.mark.parametrize("exception", [EOFError, KeyboardInterrupt])
+def test_input_lower_exits_on_terminal_input_end(monkeypatch, exception):
+    def interrupted_input():
+        raise exception
+
+    monkeypatch.setattr("builtins.input", interrupted_input)
+
+    with pytest.raises(SystemExit) as error:
+        user_interface.input_lower()
+
+    assert error.value.code == 1
 
 
 def test_validate_guess_input_rejects_wrong_length(caplog):

@@ -14,9 +14,9 @@ behavior for concurrent solver work.
 
 from __future__ import annotations
 
+import sys
 from multiprocessing import Process, Queue
 from queue import Empty
-from sys import exit # pylint: disable=redefined-builtin
 from threading import Lock
 
 
@@ -80,7 +80,7 @@ class Concurrent:
         """Clean up child processes and queues and then exit"""
         self.terminate_children()
         self.close()
-        exit(exit_code)
+        sys.exit(exit_code)
 
     def terminate_children(self) -> None:
         """Stop worker processes and prevent queue feeder threads from blocking."""

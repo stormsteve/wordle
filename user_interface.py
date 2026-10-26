@@ -28,7 +28,7 @@ def input_lower() -> str:
     """
     try:
         return str(input()).lower().strip()
-    except: # pylint: disable=bare-except
+    except (EOFError, KeyboardInterrupt):
         import sys
         sys.exit(1)
 
