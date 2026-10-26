@@ -9,8 +9,9 @@ to filter possible answers.
 """
 
 from typing import Iterator
+
 from config import Config                          # Wordle Solver Configuration
-from mytypes import WordSet, LetterSet, LetterList # My type hints
+from mytypes import WordCollection, WordSet, LetterSet, LetterList # My type hints
 
 
 def _word_length() -> int:
@@ -242,7 +243,7 @@ class Clues (): # pylint: disable=too-many-instance-attributes
         # If none of the above conditions were met, the word is a possible solution
         return True
 
-    def filter_words(self, words:WordSet, limit:float | None = None) -> WordSet:
+    def filter_words(self, words:WordCollection, limit:float | None = None) -> WordSet:
         """
         Filter a set of words and return a new set of the matching words. If the result would have
         more than "limit" words, return the set {'limit_reached'}. This is a performance
@@ -260,7 +261,7 @@ class Clues (): # pylint: disable=too-many-instance-attributes
 
         return filtered_words
 
-    def filter_words_len(self, words:WordSet, limit:float | None = None) -> int:
+    def filter_words_len(self, words:WordCollection, limit:float | None = None) -> int:
         """Return the length of the filtered list."""
         filtered_set = self.filter_words(words, limit)
         return (

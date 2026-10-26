@@ -116,14 +116,14 @@ def num_active_children() -> int:
 import logging
 import psutil
 from algorithm import accurate
-from mytypes import WordSet
+from mytypes import WordCollection, WordIterable, WordSet
 from config import Config
 
 
 def get_guess_score(
         outqueue: Queue[str], # pylint: disable=unsubscriptable-object
         inqueue: Queue[str],  # pylint: disable=unsubscriptable-object
-        words: WordSet,
+        words: WordCollection,
         pid: int,
         settings: dict) -> bool:
     """
@@ -167,7 +167,7 @@ def get_guess_score(
     return True
 
 
-def fill_queue(conc: Concurrent, all_guesses: WordSet) -> None:
+def fill_queue(conc: Concurrent, all_guesses: WordIterable) -> None:
     """
     Add all guesses to the input queue for processing.
 
@@ -179,7 +179,7 @@ def fill_queue(conc: Concurrent, all_guesses: WordSet) -> None:
         conc.get_outqueue().put(w)
 
 
-def launch_child(conc: Concurrent, words: WordSet, pid: int) -> None:
+def launch_child(conc: Concurrent, words: WordCollection, pid: int) -> None:
     """
     Start a child process to handle guess scoring.
 
@@ -202,7 +202,7 @@ def launch_child(conc: Concurrent, words: WordSet, pid: int) -> None:
     conc.add_process(p)
 
 
-def launch_children(conc: Concurrent, words: WordSet) -> None:
+def launch_children(conc: Concurrent, words: WordCollection) -> None:
     """
     Start multiple child processes for parallel guess scoring.
 
@@ -219,7 +219,8 @@ def launch_children(conc: Concurrent, words: WordSet) -> None:
         launch_child(conc, words, proc_num)
 
 
-def process_accurate_logic_single_threaded(all_guesses: WordSet, words: WordSet) -> dict[str, float]:
+def process_accurate_logic_single_threaded(
+        all_guesses: WordIterable, words: WordCollection) -> dict[str, float]:
     """
     Process all guesses sequentially to find the best one.
 
@@ -244,7 +245,7 @@ def process_accurate_logic_single_threaded(all_guesses: WordSet, words: WordSet)
     return scores
 
 
-def collect_results_from_processes(concurrent: Concurrent, scores: dict[str, float], words: WordSet) -> None:
+def collect_results_from_processes(concurrent: Concurrent, scores: dict[str, float], words: WordCollection) -> None:
     """
     Collect results from child processes and manage dynamic process scaling.
     """
@@ -287,7 +288,8 @@ def collect_results_from_processes(concurrent: Concurrent, scores: dict[str, flo
             break
 
 
-def process_parallel_guesses(all_guesses: WordSet, words: WordSet) -> dict[str, float]:
+def process_parallel_guesses(
+        all_guesses: WordIterable, words: WordCollection) -> dict[str, float]:
     """
     Process guesses using parallel child processes.
     """
@@ -306,15 +308,21 @@ def process_parallel_guesses(all_guesses: WordSet, words: WordSet) -> dict[str, 
         # Clean up the child processes
         if not _SHUTDOWN_REQUESTED and concurrent.is_child_abnormal_exit():
             logging.debug('Child process error.')
-            concurrent.terminate_children()
             raise RuntimeError('A scoring worker exited unexpectedly.')
         concurrent.join_processes()
+    except BaseException:
+        # Startup can fail after earlier workers have started. Keep them
+        # registered until they have all been stopped and reaped.
+        concurrent.terminate_children()
+        concurrent.join_processes()
+        raise
     finally:
         concurrent.close()
     return scores
 
 
-def process_accurate_logic(all_guesses: WordSet, words: WordSet) -> dict[str, float]:
+def process_accurate_logic(
+        all_guesses: WordIterable, words: WordCollection) -> dict[str, float]:
     """
     Process guesses using parallel processing if beneficial.
 

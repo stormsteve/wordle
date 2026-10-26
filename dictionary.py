@@ -29,6 +29,32 @@ def resolve_word_file(filename: str) -> str:
     bundled_path = pathlib.Path(__file__).resolve().parent / path
     return str(bundled_path) if bundled_path.exists() else filename
 
+def get_dictionary_source(filename: str, word_length: int,
+                          config: Config | None = None) -> str:
+    """Return the effective source dictionary path for the requested word length."""
+    config = config or Config()
+    default_word_list = pathlib.Path(__file__).resolve().parent / 'legal_guesses.txt'
+    resolved_filename = pathlib.Path(resolve_word_file(filename)).resolve()
+    if resolved_filename == default_word_list and word_length != 5:
+        source_candidates = (
+            config.get_word_list_dictionary2(),
+            'american-english',
+            '/usr/share/dict/american-english',
+        )
+        for candidate in source_candidates:
+            resolved_candidate = resolve_word_file(candidate)
+            if pathlib.Path(resolved_candidate).is_file():
+                logging.info('Using source dictionary for %d-letter words: %s',
+                             word_length, pathlib.Path(resolved_candidate).resolve())
+                return str(pathlib.Path(resolved_candidate).resolve())
+        fallback = pathlib.Path(
+            resolve_word_file(config.get_word_list_dictionary2())).resolve()
+        logging.error(
+            'No source dictionary found for %d-letter words. Install '
+            'Ubuntu package wamerican or pass --dictionary PATH.', word_length)
+        return str(fallback)
+    return str(pathlib.Path(resolve_word_file(filename)).resolve())
+
 def load_word_set_from_file(filename: str) -> WordSet:
     """
     Load a set of words from a file, one word per line.
@@ -161,32 +187,18 @@ def build_dictionaries() -> tuple[WordSet, WordSet]:
     """
     config = Config()
     word_length = config.get_word_length()
-    filename = config.get_word_list_dictionary()
+    configured_filename = config.get_word_list_dictionary()
 
     # The tracked Wordle lists make the default five-letter game independent
     # of the host OS dictionary and keep its answer set reproducible.
     default_word_list = pathlib.Path(__file__).resolve().parent / 'legal_guesses.txt'
-    is_default_word_list = pathlib.Path(resolve_word_file(filename)).resolve() == default_word_list
+    is_default_word_list = (
+        pathlib.Path(resolve_word_file(configured_filename)).resolve() == default_word_list)
+    filename = get_dictionary_source(configured_filename, word_length, config)
     if is_default_word_list:
         if word_length == 5:
             return (load_word_set_from_file(filename),
                     load_word_set_from_file('legal_answers.txt'))
-        source_candidates = (
-            config.get_word_list_dictionary2(),
-            'american-english',
-            '/usr/share/dict/american-english',
-        )
-        filename = next(
-            (candidate for candidate in source_candidates
-             if pathlib.Path(resolve_word_file(candidate)).is_file()),
-            config.get_word_list_dictionary2(),
-        )
-        if not pathlib.Path(resolve_word_file(filename)).is_file():
-            logging.error(
-                'No source dictionary found for %d-letter words. Install '
-                'Ubuntu package wamerican or pass --dictionary PATH.', word_length)
-        logging.info('Using source dictionary for %d-letter words: %s',
-                     word_length, filename)
 
     legal_guesses, one_char_less, two_chars_less = load_words_from_file(filename, word_length)
 

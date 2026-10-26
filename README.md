@@ -100,6 +100,33 @@ Run tests:
 pytest
 ```
 
+## Benchmarking
+
+Run a repeatable sample of the solver's guess-scoring workload:
+
+```bash
+python3 benchmark.py
+```
+
+The script uses evenly spaced words from the sorted legal-guess and answer
+sets, performs one warm-up, then reports each timed run and the median as JSON.
+It bypasses the cache. To compare single-process and parallel scoring, use the
+same workload settings and change only `--processes`:
+
+```bash
+python3 benchmark.py --guess-count 200 --answer-count 200 --processes 0
+python3 benchmark.py --guess-count 200 --answer-count 200 --processes 4
+```
+
+The output includes the workload hash, effective dictionary source, and
+selected scoring mode; compare runs only when their workload hashes,
+algorithm, and dictionary settings match. Use
+`--dictionary PATH` for a custom word list and `--length` for other word sizes.
+Guess and answer iteration order is fixed. Parallel worker scheduling and
+load-based scaling can still affect pruning and timings. The
+`returned_score_counts` field counts retained score results, not scoring calls;
+every sampled guess is attempted in each completed repetition.
+
 ## Capabilities
 
 - `--length` supports Wordle-like puzzles beyond the default 5-letter game

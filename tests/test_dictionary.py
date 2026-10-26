@@ -66,6 +66,8 @@ def test_other_word_lengths_fall_back_to_american_english(monkeypatch, tmp_path)
 
     assert legal_guesses == {"abcdefgh"}
     assert legal_answers == {"abcdefgh"}
+    assert dictionary.get_dictionary_source(
+        config.get_word_list_dictionary(), 8, config) == str(tmp_path / "american-english")
 
 
 def test_filter_legal_guesses_removes_roman_numerals_not_words_and_non_answers():

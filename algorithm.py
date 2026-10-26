@@ -14,7 +14,7 @@ from typing import List
 # The scoring modules intentionally form a small import cycle through Config.
 # pylint: disable=cyclic-import
 
-from mytypes import WordSet            # My type hints
+from mytypes import WordCollection
 from config  import Config             # We need this for a configurable constant
 from clues   import Clues              # Clues gathered so far
 from clue_list import get_clue_list    # To generate a clue list
@@ -25,7 +25,7 @@ def _max_word_score() -> int:
     return Config().get_max_word_score()
 
 
-def accurate(words: WordSet, guess: str, limit: float | None = None) -> float:
+def accurate(words: WordCollection, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
 
@@ -44,7 +44,7 @@ def accurate(words: WordSet, guess: str, limit: float | None = None) -> float:
     return Config().get_algorithm()(words, guess, actual_limit)
 
 
-def accurate_avg(words: WordSet, guess: str, limit: float | None = None) -> float:
+def accurate_avg(words: WordCollection, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
 
@@ -77,7 +77,7 @@ def accurate_avg(words: WordSet, guess: str, limit: float | None = None) -> floa
     # that cannot be the correct answer
     return accum_score / len(words)  + (0 if guess in words else 0.1)
 
-def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> float:
+def accurate_median(words: WordCollection, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
     For each word in the set (except the guess itself), treat it as the answer and see how many
@@ -117,7 +117,7 @@ def accurate_median(words: WordSet, guess: str, limit: float | None = None) -> f
     score = median + (0 if guess in words else 0.1)
     return _max_word_score() if score > actual_limit else score
 
-def accurate_max(words: WordSet, guess: str, limit: float | None = None) -> float:
+def accurate_max(words: WordCollection, guess: str, limit: float | None = None) -> float:
     """
     Calculate the accuracy score for a guess by simulating it against all possible answers.
     For each word in the set (except the guess itself), treat it as the answer and see how many

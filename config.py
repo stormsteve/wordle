@@ -15,7 +15,7 @@ from __future__ import annotations
 import pathlib
 from typing import Type, Callable
 
-from mytypes import WordSet        # My type hints
+from mytypes import WordCollection, WordSet        # My type hints
 
 class Config: # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
@@ -129,7 +129,7 @@ class Config: # pylint: disable=too-many-instance-attributes,too-many-public-met
         """Set the answer word."""
         self._answer = word
 
-    def set_algorithm(self, func:Callable[[WordSet, str, float], float]) -> None:
+    def set_algorithm(self, func:Callable[[WordCollection, str, float], float]) -> None:
         """Set the scoring algorithm."""
         self._default_function_initialized = True
         self._algorithm = func
@@ -198,7 +198,7 @@ class Config: # pylint: disable=too-many-instance-attributes,too-many-public-met
         """Get the directory containing the cache file."""
         return self._cache_dir
 
-    def get_algorithm(self) -> Callable[[WordSet, str, float], float]:
+    def get_algorithm(self) -> Callable[[WordCollection, str, float], float]:
         """Get the scoring algorithm."""
         if not self._default_function_initialized:
             # Set the default scoring algorithm to use.

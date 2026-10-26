@@ -53,7 +53,8 @@ def test_launch_child_passes_pickle_safe_settings_to_child(monkeypatch):
 
 
 @pytest.mark.parametrize('method', ['spawn', 'forkserver'])
-def test_worker_preserves_length_and_scoring_algorithm(monkeypatch, method):
+@pytest.mark.parametrize('ordered_answers', [False, True])
+def test_worker_preserves_length_and_scoring_algorithm(monkeypatch, method, ordered_answers):
     if method not in multiprocessing.get_all_start_methods():
         pytest.skip(f'{method} is unavailable')
     context = multiprocessing.get_context(method)
@@ -64,7 +65,8 @@ def test_worker_preserves_length_and_scoring_algorithm(monkeypatch, method):
     concurrent = myconcurrent.Concurrent()
     try:
         concurrent.get_outqueue().put('planet')
-        myconcurrent.launch_child(concurrent, {'planet', 'placer'}, 0)
+        words = dict.fromkeys(['planet', 'placer']) if ordered_answers else {'planet', 'placer'}
+        myconcurrent.launch_child(concurrent, words, 0)
         worker = concurrent._processes[0]
         worker.join(10)
         assert not worker.is_alive()
@@ -104,6 +106,9 @@ def test_abnormal_worker_exit_raises_error_after_cleanup(monkeypatch):
         def terminate_children(self):
             self.terminated = True
 
+        def join_processes(self):
+            pass
+
         def close(self):
             self.closed = True
 
@@ -119,3 +124,68 @@ def test_abnormal_worker_exit_raises_error_after_cleanup(monkeypatch):
 
     assert concurrent.terminated
     assert concurrent.closed
+
+
+@pytest.mark.parametrize('failure_stage', ['launch_children', 'collect_results_from_processes'])
+def test_parallel_failure_terminates_and_joins_before_unregistering(monkeypatch, failure_stage):
+    events = []
+
+    class FakeConcurrent:
+        def terminate_children(self):
+            events.append('terminate')
+
+        def join_processes(self):
+            events.append('join')
+
+        def close(self):
+            events.append('close')
+
+    def fail(*_args):
+        raise OSError('worker failure')
+
+    monkeypatch.setattr(myconcurrent, 'Concurrent', FakeConcurrent)
+    monkeypatch.setattr(myconcurrent, 'fill_queue', lambda *_args: None)
+    monkeypatch.setattr(myconcurrent, 'launch_children', lambda *_args: None)
+    monkeypatch.setattr(myconcurrent, failure_stage, fail)
+
+    with pytest.raises(OSError, match='worker failure'):
+        myconcurrent.process_parallel_guesses(['crane'], {'crane', 'slate'})
+
+    assert events == ['terminate', 'join', 'close']
+
+
+def test_partial_worker_startup_reaps_started_workers(monkeypatch):
+    workers = []
+
+    class FakeQueue:
+        def cancel_join_thread(self):
+            pass
+
+    class FakeProcess:
+        def __init__(self, **_kwargs):
+            self.killed = False
+            self.joined = False
+            workers.append(self)
+
+        def start(self):
+            if len(workers) == 2:
+                raise OSError('cannot start second worker')
+
+        def kill(self):
+            self.killed = True
+
+        def join(self):
+            self.joined = True
+
+    monkeypatch.setattr(myconcurrent, 'Queue', FakeQueue)
+    monkeypatch.setattr(myconcurrent, 'Process', FakeProcess)
+    monkeypatch.setattr(myconcurrent, 'fill_queue', lambda *_args: None)
+    Config().set_max_child_processes(2)
+
+    with pytest.raises(OSError, match='cannot start second worker'):
+        myconcurrent.process_parallel_guesses(['crane'], {'crane', 'slate'})
+
+    assert workers[0].killed
+    assert workers[0].joined
+    assert not workers[1].killed
+    assert not myconcurrent._active_concurrent
