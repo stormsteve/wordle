@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13', '3.14']
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Run Pylint
+        run: >-
+          python -m pylint --rcfile=.pylintrc --reports=no
+          argument_parser.py algorithm.py best_guess.py build_cache.py clue_list.py
+          clues.py config.py dictionary.py game_logic.py game_modes.py logic.py
+          myconcurrent.py mytypes.py second_guess.py spelling_bee_cheat.py
+          user_interface.py wordle.py wordle_gui.py wordle_gui_layout.py
